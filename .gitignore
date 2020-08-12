@@ -1,6 +1,7 @@
 # Build output
 *.o
 *.a
+*.d
 kernel.elf
 kernel.img
 kernel.lst
