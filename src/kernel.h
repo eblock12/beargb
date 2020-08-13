@@ -2,6 +2,7 @@
 
 #if USE_SDL
 #include <SDL.h>
+#include "shared.h"
 #else
 #include <circle/memory.h>
 #include <circle/actled.h>

@@ -1,4 +1,5 @@
 #include "Kernel.h"
+#include "GameBoyCart.h"
 #if USE_SDL
 #else
 #include <circle/usb/usbgamepad.h>
@@ -6,13 +7,6 @@
 #include <circle/util.h>
 #endif
 #include <assert.h>
-
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-typedef signed char s8;
-typedef signed short s16;
-typedef signed int s32;
 
 // GPI internal screen res
 const int SCREEN_WIDTH = 320;
@@ -91,6 +85,8 @@ bool Kernel::Initialize()
     ok = ok && _timer.Initialize();
     ok = ok && _usbhci.Initialize();
 #endif
+
+    GameBoyCart *cart = GameBoyCart::LoadFromRomFile("tetris.gb");
 
     return ok;
 }

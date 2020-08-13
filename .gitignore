@@ -7,3 +7,9 @@ kernel.img
 kernel.lst
 kernel.map
 beargb_sdl
+
+# ROM files
+*.gb
+*.gbc
+
+.DS_STORE

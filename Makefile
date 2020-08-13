@@ -7,14 +7,17 @@
 
 SRCDIR = src
 CIRCLEHOME = ext/circle
+STDLIB_SUPPORT=3
 
 OBJS = \
 	$(SRCDIR)/main.o \
-	$(SRCDIR)/Kernel.o
+	$(SRCDIR)/Kernel.o \
+	$(SRCDIR)/GameBoy.o \
+	$(SRCDIR)/GameBoyCart.o
 
 ifdef USESDL
 	CPP = g++
-	CPPFLAGS = -I$(SRCDIR) -O3 -DUSE_SDL `sdl2-config --cflags`
+	CPPFLAGS = -I$(SRCDIR) -O3 -DUSE_SDL -std=c++17 `sdl2-config --cflags`
 	NAME = beargb_sdl
 
 $(NAME): $(OBJS)
@@ -30,7 +33,7 @@ clean:
 
 else # !USESDL
 
-	CPPFLAGS = -I$(SRCDIR) -Wall -Werror -O3 -DUSE_CIRCLE
+	CPPFLAGS = -I$(SRCDIR) -std=c++17 -Wall -Werror -O3 -DUSE_CIRCLE
 
 	LIBS = \
 		$(CIRCLEHOME)/lib/usb/libusb.a \
