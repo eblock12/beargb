@@ -1,4 +1,4 @@
-#include "kernel.h"
+#include "Kernel.h"
 
 #if USE_SDL
 #define EXIT_HALT	0

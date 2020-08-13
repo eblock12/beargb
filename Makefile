@@ -10,16 +10,16 @@ CIRCLEHOME = ext/circle
 
 OBJS = \
 	$(SRCDIR)/main.o \
-	$(SRCDIR)/kernel.o
+	$(SRCDIR)/Kernel.o
 
 ifdef USESDL
 	CPP = g++
-	CPPFLAGS = -I$(SRCDIR) -O3 -DUSE_SDL `sdl-config --cflags`
+	CPPFLAGS = -I$(SRCDIR) -O3 -DUSE_SDL `sdl2-config --cflags`
 	NAME = beargb_sdl
 
 $(NAME): $(OBJS)
 	@echo "  LINK   $@"
-	@$(CPP) -o $(NAME) $(OBJS) `sdl-config --libs`
+	@$(CPP) -o $(NAME) $(OBJS) `sdl2-config --libs`
 
 %.o: %.cpp
 	@echo "  CPP   $@"

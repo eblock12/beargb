@@ -29,6 +29,8 @@ class Kernel
 {
 private:
 #if USE_SDL
+    SDL_Window *_window;
+    SDL_Surface *_surface;
 #else
     CMemorySystem _memory;
     CActLED _actLED;

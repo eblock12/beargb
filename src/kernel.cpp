@@ -1,4 +1,4 @@
-#include "kernel.h"
+#include "Kernel.h"
 #if USE_SDL
 #else
 #include <circle/usb/usbgamepad.h>
@@ -6,6 +6,17 @@
 #include <circle/util.h>
 #endif
 #include <assert.h>
+
+typedef unsigned char u8;
+typedef unsigned short u16;
+typedef unsigned int u32;
+typedef signed char s8;
+typedef signed short s16;
+typedef signed int s32;
+
+// GPI internal screen res
+const int SCREEN_WIDTH = 320;
+const int SCREEN_HEIGHT = 240;
 
 static const char FromKernel[] = "kernel";
 
@@ -17,14 +28,17 @@ static bool m_pressedRight;
 
 Kernel::Kernel()
 :
-#if !USE_SDL
-   _screen(320, 240), // GPI Screen res
+#if USE_SDL
+    _window(nullptr),
+    _surface(nullptr),
+#else
+    _screen(SCREEN_WIDTH, SCREEN_HEIGHT),
     _timer(&_interrupt),
     _logger(_options.GetLogLevel(), &_timer),
     _usbhci(&_interrupt, &_timer),
 #endif
-    _posX(160),
-    _posY(120)
+    _posX(SCREEN_WIDTH / 2),
+    _posY(SCREEN_HEIGHT / 2)
 {
 #if !USE_SDL
     // Note: Skipping pins 0x12 and 0x13 for audio usage
@@ -50,6 +64,18 @@ bool Kernel::Initialize()
     bool ok = true;
 
 #ifdef USE_SDL
+
+    SDL_Init(SDL_INIT_VIDEO);
+
+    _window = SDL_CreateWindow(
+        "BearGB",
+        SDL_WINDOWPOS_UNDEFINED,
+        SDL_WINDOWPOS_UNDEFINED,
+        SCREEN_WIDTH,
+        SCREEN_HEIGHT,
+        0);
+    _surface = SDL_GetWindowSurface(_window);
+
 #else
     ok = ok && _screen.Initialize();
     ok = ok && _serial.Initialize(115200);
@@ -73,7 +99,9 @@ ShutdownMode Kernel::Run()
 {
     bool foundGamePad = false;
 
-#if !USE_SDL
+#if USE_SDL
+    SDL_Event event;
+#else
     for (unsigned deviceIdx = 1; 1; deviceIdx++)
     {
         CString deviceName;
@@ -102,9 +130,36 @@ ShutdownMode Kernel::Run()
     CBcmFrameBuffer *frameBuffer = _screen.GetFrameBuffer();
 #endif
 
-    while (true)
+    bool running = true;
+    
+    while (running)
     {
-#if !USE_SDL
+#if USE_SDL
+        SDL_LockSurface(_surface);
+        //memset(_surface->pixels, 0xFF, _surface->h * _surface->pitch);
+
+        for (int x = 0; x < _surface->w; x++)
+        for (int y = 0; y < _surface->h; y++)
+        {
+            ((u8*)_surface->pixels)[(y * _surface->w + x) * 4 + 0] = y & 0xFF; // blue
+            ((u8*)_surface->pixels)[(y * _surface->w + x) * 4 + 1] = x / 2 & 0xFF; // green
+            ((u8*)_surface->pixels)[(y * _surface->w + x) * 4 + 2] = 0xFF - y & 0xFF; // red
+            ((u8*)_surface->pixels)[(y * _surface->w + x) * 4 + 3] = 0; // alpha
+        }
+
+        SDL_UnlockSurface(_surface);
+
+        SDL_UpdateWindowSurface(_window);
+
+        while (SDL_PollEvent(&event))
+        {
+            switch (event.type)
+            {
+                case SDL_QUIT:
+                    running = false;
+            }
+        }
+#else
         frameBuffer->WaitForVerticalSync();
 
         // clear frame buffer
@@ -143,6 +198,11 @@ ShutdownMode Kernel::Run()
 #endif
 		}
     }
+
+#if USE_SDL
+    SDL_DestroyWindow(_window);
+    SDL_Quit();
+#endif
 
     return ShutdownHalt;
 }
