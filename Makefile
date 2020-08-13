@@ -13,7 +13,8 @@ OBJS = \
 	$(SRCDIR)/main.o \
 	$(SRCDIR)/Kernel.o \
 	$(SRCDIR)/GameBoy.o \
-	$(SRCDIR)/GameBoyCart.o
+	$(SRCDIR)/GameBoyCart.o \
+	$(SRCDIR)/GameBoyCpu.o
 
 ifdef USESDL
 	CPP = g++
@@ -33,7 +34,7 @@ clean:
 
 else # !USESDL
 
-	CPPFLAGS = -I$(SRCDIR) -std=c++17 -Wall -Werror -O3 -DUSE_CIRCLE
+	CPPFLAGS = -I$(SRCDIR) -std=c++17 -O3 -DUSE_CIRCLE
 
 	LIBS = \
 		$(CIRCLEHOME)/lib/usb/libusb.a \

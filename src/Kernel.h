@@ -19,6 +19,9 @@
 #include <circle/types.h>
 #endif
 
+#include <memory>
+#include "GameBoy.h"
+
 enum ShutdownMode
 {
     ShutdownNone,
@@ -47,6 +50,8 @@ private:
 
     static void GamePadStatusHandler (unsigned nDeviceIndex, const TGamePadState *pState);
 #endif
+
+    std::unique_ptr<GameBoy> _gameBoy;
 
 	// character position
 	int _posX;

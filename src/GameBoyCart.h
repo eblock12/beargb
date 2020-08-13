@@ -1,10 +1,9 @@
 #pragma once
 
 #include <string>
-#include <fstream>
-#include <iostream>
-#include <vector>
 #include "shared.h"
+
+class GameBoy;
 
 struct GameBoyCartHeader
 {
@@ -40,7 +39,7 @@ struct GameBoyCartHeader
             case 0x05:
                 return "MBC2";
             case 0x06:
-                return "MBC2+Battery";
+                return "MBC2+RAM+Battery";
             case 0x08:
                 return "ROM+RAM";
             case 0x09:
@@ -54,7 +53,7 @@ struct GameBoyCartHeader
             case 0x0F:
                 return "MBC3+Timer+Battery";
             case 0x10:
-                return "MBC3+Timer+RAM+Battery";
+                return "MBC3+RAM+Timer+Battery";
             case 0x11:
                 return "MBC3";
             case 0x12:
@@ -70,13 +69,13 @@ struct GameBoyCartHeader
             case 0x1C:
                 return "MBC5+Rumble";
             case 0x1D:
-                return "MBC5+Rumble+RAM";
+                return "MBC5+RAM+Rumble";
             case 0x1E:
-                return "MBC5+Rumble+RAM+Battery";
+                return "MBC5+RAM+Rumble+Battery";
             case 0x20:
-                return "MBC6";
+                return "MBC6+RAM+Battery";
             case 0x22:
-                return "MBC7+Sensor+Rumble+RAM+Battery";
+                return "MBC7+RAM+Battery+Accelerometer";
             case 0xFC:
                 return "Pocket Camera";
             case 0xFD:
@@ -101,7 +100,7 @@ struct GameBoyCartHeader
         {
             case 0x05: // MBC2
             case 0x06: // MBC2+Battery
-                return 0x200; 
+                return 0x200;
         }
 
         switch (ramSize)
@@ -109,7 +108,7 @@ struct GameBoyCartHeader
             case 0:
                 return 0; // no cart RAM
             case 1:
-                return 0x800; // 2 KB 
+                return 0x800; // 2 KB
             case 2:
                 return 0x2000; // 8 KB
             case 3:
@@ -148,12 +147,15 @@ struct GameBoyCartHeader
 class GameBoyCart
 {
 private:
+    GameBoy *_gameBoy;
+    GameBoyCartHeader _header;
     u8 *_romData;
 
-    GameBoyCart(u8 *romData);
+    GameBoyCart(GameBoy *gameBoy, u8 *romData);
 public:
     static constexpr int HeaderOffset = 0x134;
 
     ~GameBoyCart();
-    static GameBoyCart *LoadFromRomFile(std::string filePath);
+    static GameBoyCart *CreateFromRomFile(const std::string &filePath, GameBoy *gameBoy);
+    void Reset();
 };

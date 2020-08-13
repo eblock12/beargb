@@ -1,8 +1,14 @@
 #include "GameBoyCart.h"
+#include "GameBoy.h"
+#include <string.h>
+#include <fstream>
+#include <iostream>
 
-GameBoyCart::GameBoyCart(u8 *romData)
+GameBoyCart::GameBoyCart(GameBoy *gameBoy, u8 *romData)
 {
+    _gameBoy = gameBoy;
     _romData = romData;
+    memcpy(&_header, romData + HeaderOffset, sizeof(GameBoyCartHeader));
 }
 
 GameBoyCart::~GameBoyCart()
@@ -13,12 +19,12 @@ GameBoyCart::~GameBoyCart()
     }
 }
 
-GameBoyCart *GameBoyCart::LoadFromRomFile(std::string filePath)
+GameBoyCart *GameBoyCart::CreateFromRomFile(const std::string &filePath, GameBoy *gameBoy)
 {
     std::ifstream romStream(filePath, std::ios::in | std::ios::binary);
     if (romStream.good())
     {
-        std::cout << "Opened ROM file: " << filePath << std::endl; 
+        std::cout << "Opened ROM file: " << filePath << std::endl;
 
         // get file size by seeking to EOF and check offset
         romStream.seekg(0, std::ios::end);
@@ -36,7 +42,7 @@ GameBoyCart *GameBoyCart::LoadFromRomFile(std::string filePath)
         switch (header.cgbFlag & 0xC0)
         {
             case 0x00:
-                cgbSupport = "Unsupported";
+                cgbSupport = "No";
                 break;
             case 0x80:
                 cgbSupport = "Optional";
@@ -50,11 +56,18 @@ GameBoyCart *GameBoyCart::LoadFromRomFile(std::string filePath)
         std::cout << "Type: " << header.GetCartTypeName() << std::endl;
         std::cout << "ROM Size: " << std::to_string(header.GetRomSize() / 1024) << " KB" << std::endl;
         std::cout << "RAM Size: " << std::to_string(header.GetRamSize() / 1024) << " KB" << std::endl;
+        std::cout << "Battery: " << (header.HasBattery() ? "Yes" : "No") << std::endl;
         std::cout << "CGB Support: " << cgbSupport << std::endl;
-        std::cout << "SGB Support: " << (header.sgbFlag == 0x03 ? "Supported" : "Unsupported") << std::endl;
-        
-        return new GameBoyCart(romData);
+        std::cout << "SGB Support: " << (header.sgbFlag == 0x03 ? "Yes" : "No") << std::endl;
+
+        return new GameBoyCart(gameBoy, romData);
     }
 
-    return nullptr; 
+    return nullptr;
+}
+
+void GameBoyCart::Reset()
+{
+    // TODO: Support bank swapping, for now just map in the first 32 KB of ROM always
+    _gameBoy->MapMemory(_romData, 0x0000, _header.GetRomSize() & 0x8000, true /*readOnly*/);
 }

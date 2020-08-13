@@ -86,7 +86,7 @@ bool Kernel::Initialize()
     ok = ok && _usbhci.Initialize();
 #endif
 
-    GameBoyCart *cart = GameBoyCart::LoadFromRomFile("tetris.gb");
+    _gameBoy.reset(new GameBoy(GameBoyModel::GameBoy, "tetris.gb"));
 
     return ok;
 }
@@ -127,9 +127,11 @@ ShutdownMode Kernel::Run()
 #endif
 
     bool running = true;
-    
+
     while (running)
     {
+        _gameBoy->RunOneFrame();
+
 #if USE_SDL
         SDL_LockSurface(_surface);
         //memset(_surface->pixels, 0xFF, _surface->h * _surface->pitch);
