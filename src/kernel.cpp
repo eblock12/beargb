@@ -1,7 +1,10 @@
 #include "kernel.h"
+#if USE_SDL
+#else
 #include <circle/usb/usbgamepad.h>
 #include <circle/string.h>
 #include <circle/util.h>
+#endif
 #include <assert.h>
 
 static const char FromKernel[] = "kernel";
@@ -13,13 +16,17 @@ static bool m_pressedLeft;
 static bool m_pressedRight;
 
 Kernel::Kernel()
-:   _screen(320, 240), // GPI Screen res
+:
+#if !USE_SDL
+   _screen(320, 240), // GPI Screen res
     _timer(&_interrupt),
     _logger(_options.GetLogLevel(), &_timer),
     _usbhci(&_interrupt, &_timer),
+#endif
     _posX(160),
     _posY(120)
 {
+#if !USE_SDL
     // Note: Skipping pins 0x12 and 0x13 for audio usage
     unsigned dpi24pins[] =
     {
@@ -31,6 +38,7 @@ Kernel::Kernel()
     {
         CGPIOPin(pin, GPIOModeAlternateFunction2);
     }
+#endif
 }
 
 Kernel::~Kernel()
@@ -41,6 +49,8 @@ bool Kernel::Initialize()
 {
     bool ok = true;
 
+#ifdef USE_SDL
+#else
     ok = ok && _screen.Initialize();
     ok = ok && _serial.Initialize(115200);
 
@@ -54,6 +64,7 @@ bool Kernel::Initialize()
     ok = ok && _interrupt.Initialize();
     ok = ok && _timer.Initialize();
     ok = ok && _usbhci.Initialize();
+#endif
 
     return ok;
 }
@@ -62,6 +73,7 @@ ShutdownMode Kernel::Run()
 {
     bool foundGamePad = false;
 
+#if !USE_SDL
     for (unsigned deviceIdx = 1; 1; deviceIdx++)
     {
         CString deviceName;
@@ -88,13 +100,16 @@ ShutdownMode Kernel::Run()
     }
 
     CBcmFrameBuffer *frameBuffer = _screen.GetFrameBuffer();
+#endif
 
     while (true)
     {
+#if !USE_SDL
         frameBuffer->WaitForVerticalSync();
 
         // clear frame buffer
         memset((u32 *) (uintptr)frameBuffer->GetBuffer(), 0, frameBuffer->GetSize());
+#endif
 
         if (m_pressedDown)
         {
@@ -122,23 +137,22 @@ ShutdownMode Kernel::Run()
 			unsigned nPosX = _posX + pos;
 			unsigned nPosY = _posY + pos;
 
+#if !USE_SDL
 			_screen.SetPixel(nPosX, nPosY, NORMAL_COLOR);
 			_screen.SetPixel((_posX + size)-pos-1, nPosY, NORMAL_COLOR);
+#endif
 		}
     }
 
     return ShutdownHalt;
 }
 
-
+#if !USE_SDL
 void Kernel::GamePadStatusHandler (unsigned nDeviceIndex, const TGamePadState *pState)
 {
 	m_pressedUp = (pState->buttons & GamePadButtonUp) == GamePadButtonUp;
 	m_pressedDown = (pState->buttons & GamePadButtonDown) == GamePadButtonDown;
 	m_pressedLeft = (pState->buttons & GamePadButtonLeft) == GamePadButtonLeft;
 	m_pressedRight = (pState->buttons & GamePadButtonRight) == GamePadButtonRight;
-
-	//CString Value;
-
-	//CLogger::Get ()->Write (FromKernel, LogNotice, Msg);
 }
+#endif

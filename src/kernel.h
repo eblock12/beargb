@@ -1,5 +1,8 @@
 #pragma once
 
+#if USE_SDL
+#include <SDL.h>
+#else
 #include <circle/memory.h>
 #include <circle/actled.h>
 #include <circle/koptions.h>
@@ -13,6 +16,7 @@
 #include <circle/usb/usbhcidevice.h>
 #include <circle/usb/usbgamepad.h>
 #include <circle/types.h>
+#endif
 
 enum ShutdownMode
 {
@@ -24,6 +28,8 @@ enum ShutdownMode
 class Kernel
 {
 private:
+#if USE_SDL
+#else
     CMemorySystem _memory;
     CActLED _actLED;
     CKernelOptions _options;
@@ -37,6 +43,7 @@ private:
     CUSBHCIDevice _usbhci;
 
     static void GamePadStatusHandler (unsigned nDeviceIndex, const TGamePadState *pState);
+#endif
 
 	// character position
 	int _posX;
@@ -45,7 +52,7 @@ public:
 	Kernel();
 	~Kernel();
 
-	boolean Initialize();
+	bool Initialize();
 
 	ShutdownMode Run();
 };
