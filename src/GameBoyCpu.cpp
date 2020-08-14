@@ -2,6 +2,7 @@
 #include "GameBoy.h"
 
 #include <iostream>
+#include <iomanip>
 
 GameBoyCpu::GameBoyCpu(GameBoy *gameBoy)
 {
@@ -52,6 +53,8 @@ void GameBoyCpu::RunOneInstruction()
     else
     {
         u8 opcode = ReadImm();
+
+        std::cout << "$" << std::hex << std::setw(4) << std::setfill('0') << int(_state.pc - 1) << ' ' << GameBoyCpu::OpcodeNames[opcode] << std::endl;
 
         switch (opcode)
         {
