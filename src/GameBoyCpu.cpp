@@ -52,6 +52,12 @@ void GameBoyCpu::RunOneInstruction()
     }
     else
     {
+        if (_state.pendingIME)
+        {
+            _state.pendingIME = false;
+            _state.ime = true;
+        }
+
         u8 opcode = ReadImm();
 
         std::cout << "$" << std::uppercase << std::hex << std::setw(4) << std::setfill('0') << int(_state.pc - 1) << ' ' << GameBoyCpu::OpcodeNames[opcode] <<
@@ -60,8 +66,7 @@ void GameBoyCpu::RunOneInstruction()
             " C=" << std::setw(2) << std::setfill('0') << int(_state.c) <<
             " D=" << std::setw(2) << std::setfill('0') << int(_state.d) <<
             " E=" << std::setw(2) << std::setfill('0') << int(_state.e) <<
-            " H=" << std::setw(2) << std::setfill('0') << int(_state.h) <<
-            " L=" << std::setw(2) << std::setfill('0') << int(_state.l) <<
+            " HL=" << std::setw(4) << std::setfill('0') << int(_regHL.GetWord()) <<
             " SP=" << std::setw(4) << std::setfill('0') << int(_state.sp) <<
             " Flags=" << (GetFlag(CpuFlag::Zero) ? 'Z' : 'z') <<
             (GetFlag(CpuFlag::AddSub) ? 'N' : 'n') <<
@@ -73,16 +78,25 @@ void GameBoyCpu::RunOneInstruction()
         {
             case 0x00: // NOP
                 break;
+            case 0x01: // LD BC,d16
+                _regBC.SetWord(ReadImmWord());
+                break;
             case 0x05: // DEC B
                 DEC(_state.b);
                 break;
             case 0x06: // LD B,d8
                 _state.b = ReadImm();
                 break;
+            case 0x0B: // DEC BC
+                DEC(_regBC);
+                break;
+            case 0x0C: // INC C
+                INC(_state.c);
+                break;
             case 0x0D: // DEC C
                 DEC(_state.c);
                 break;
-            case 0x0E: // LD C, 8
+            case 0x0E: // LD C,d8
                 _state.c = ReadImm();
                 break;
             case 0x20: // JR NZ,r8
@@ -91,23 +105,59 @@ void GameBoyCpu::RunOneInstruction()
             case 0x21: // LD HL,d16
                 _regHL.SetWord(ReadImmWord());
                 break;
+            case 0x2A: // LD A,(HL+)
+                _state.a = Read(_regHL.GetWord()); _regHL.Increment();
+                break;
+            case 0x31: // LD SP,d16
+                _state.sp = ReadImmWord();
+                break;
             case 0x32: // LD (HL-),A
                 Write(_regHL.GetWord(), _state.a); _regHL.Decrement();
+                break;
+            case 0x36: // LD (HL),d8
+                Write(_regHL.GetWord(), ReadImm());
                 break;
             case 0x3E: // LD A,d8
                 _state.a = ReadImm();
                 break;
+            case 0x78: // LD A,B
+                _state.a = _state.b;
+                break;
             case 0xAF: // XOR A
                 XOR(_state.a);
+                break;
+            case 0xB1: // OR C
+                OR(_state.c);
                 break;
             case 0xC3: // JP a16
                 JP(ReadImmWord());
                 break;
+            case 0xC9: // RET
+                RET();
+                break;
+            case 0xCD: // CALL a16
+                CALL(ReadImmWord());
+                break;
             case 0xE0: // LDH (a8),A
                 Write(0xFF00 | ReadImm(), _state.a);
                 break;
+            case 0xE2: // LD (C),A
+                Write(0xFF00 | _state.c, _state.a);
+                break;
+            case 0xEA: // LD (a16),A
+                Write(ReadImmWord(), _state.a);
+                break;
+            case 0xF0: // LDH A,(a8)
+                _state.a = Read(0xFF00 | ReadImm());
+                break;
+            case 0xFB: // EI
+                _state.pendingIME = true;
+                break;
             case 0xF3: // DI
                 _state.ime = false;
+                break;
+            case 0xFE: // CP d8
+                CP(ReadImm());
                 break;
             default:
                 std::cout << "HALT! Unhandled opcode: " << std::uppercase << std::hex << int(opcode) << std::endl;
@@ -175,12 +225,81 @@ void GameBoyCpu::ClearFlag(CpuFlag flag)
     _state.flags &= ~flag;
 }
 
+u8 GameBoyCpu::PopByte()
+{
+    u8 val = Read(_state.sp);
+    _state.sp++;
+    return val;
+}
+
+u16 GameBoyCpu::PopWord()
+{
+    u8 lowByte = PopByte();
+    u8 highByte = PopByte();
+    return (highByte << 8) | lowByte;
+}
+
+void GameBoyCpu::PushByte(u8 val)
+{
+    _state.sp--;
+    Write(_state.sp, val);
+}
+
+void GameBoyCpu::PushWord(u16 val)
+{
+    PushByte(val >> 8);
+    PushByte((u8)val);
+}
+
+void GameBoyCpu::AND(u8 val)
+{
+    _state.a &= val;
+    SetFlag(CpuFlag::Zero, _state.a == 0);
+    ClearFlag(CpuFlag::AddSub);
+    ClearFlag(CpuFlag::HalfCarry);
+    ClearFlag(CpuFlag::Carry);
+}
+
+void GameBoyCpu::CALL(u16 addr)
+{
+    _gameBoy->ExecuteTwoCycles();
+    _gameBoy->ExecuteTwoCycles();
+    PushWord(_state.pc);
+    _state.pc = addr;
+}
+
+void GameBoyCpu::CP(u8 val)
+{
+    signed cp = (signed)_state.a - val;
+
+    SetFlag(CpuFlag::Zero, (u8)cp == 0);
+    SetFlag(CpuFlag::AddSub);
+    SetFlag(CpuFlag::HalfCarry, ((_state.a ^ val ^ cp) & 0x10) != 0);
+    SetFlag(CpuFlag::Carry, cp < 0);
+}
+
 void GameBoyCpu::DEC(u8 &reg)
 {
     SetFlag(CpuFlag::HalfCarry, (reg & 0x0F) == 0);
     reg--;
     SetFlag(CpuFlag::Zero, reg == 0);
     SetFlag(CpuFlag::AddSub);
+}
+
+void GameBoyCpu::DEC(Reg16 &reg)
+{
+    _gameBoy->ExecuteTwoCycles();
+    _gameBoy->ExecuteTwoCycles();
+    reg.SetWord(reg.GetWord() - 1);
+    // No flags are set in 16-bit mode
+}
+
+void GameBoyCpu::INC(u8 &reg)
+{
+    SetFlag(CpuFlag::HalfCarry, ((reg ^ 1 ^ (reg + 1)) & 0x10) != 0);
+    reg++;
+    SetFlag(CpuFlag::Zero, reg == 0);
+    ClearFlag(CpuFlag::AddSub);
 }
 
 void GameBoyCpu::JP(u16 addr)
@@ -198,6 +317,22 @@ void GameBoyCpu::JR(bool condition, s8 offset)
         _gameBoy->ExecuteTwoCycles();
         _gameBoy->ExecuteTwoCycles();
     }
+}
+
+void GameBoyCpu::OR(u8 val)
+{
+    _state.a |= val;
+    SetFlag(CpuFlag::Zero, _state.a == 0);
+    ClearFlag(CpuFlag::AddSub);
+    ClearFlag(CpuFlag::HalfCarry);
+    ClearFlag(CpuFlag::Carry);
+}
+
+void GameBoyCpu::RET()
+{
+    _state.pc = PopWord();
+    _gameBoy->ExecuteTwoCycles();
+    _gameBoy->ExecuteTwoCycles();
 }
 
 void GameBoyCpu::XOR(u8 val)

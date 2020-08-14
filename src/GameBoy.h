@@ -5,6 +5,7 @@
 #include "shared.h"
 #include "GameBoyCart.h"
 #include "GameBoyCpu.h"
+#include "GameBoyPpu.h"
 
 enum class GameBoyModel
 {
@@ -16,6 +17,31 @@ enum class GameBoyModel
 struct GameBoyState
 {
     u64 cycleCount;
+
+    // Bit 4 - Joypad Interrupt Requested
+    // Bit 3 - Serial Interrupt Requested
+    // Bit 2 - Timer Interrupt Requested
+    // Bit 1 - LCD STAT Interrupt Requested
+    // Bit 0 - Vertical Blank Interrupt Requested
+    u8 interruptFlags;
+
+    // Bit 4 - Joypad Interrupt Enable
+    // Bit 3 - Serial Interrupt Enable
+    // Bit 2 - Timer Interrupt Enable
+    // Bit 1 - LCD STAT Interrupt Enable
+    // Bit 0 - Vertical Blank Interrupt Enable
+    u8 interruptEnable;
+
+    // 8 bits of data to be read/written over serial port
+    u8 serialTransfer;
+
+    // Bit 7 - Transfer Start Flag
+    //  0: No transfer
+    //  1: Start transfer
+    // Bit 0 - Shift Clock
+    //  0: External Clock (500KHz Max.)
+    //  1: Internal Clock (8192Hz)
+    u8 serialControl;
 };
 
 class GameBoy
@@ -33,6 +59,7 @@ private:
 
     std::unique_ptr<GameBoyCart> _cart;
     std::unique_ptr<GameBoyCpu> _cpu;
+    std::unique_ptr<GameBoyPpu> _ppu;
 
     // internal RAM
     u8 *_workRam = nullptr;
@@ -48,6 +75,8 @@ private:
     // each block maps to ROM or RAM both internally or cartridge, writes to I/O registers are intercepted earlier
     u8 *_readMap[0x100] = {};
     u8 *_writeMap[0x100] = {};
+    u8 _readableRegMap[0x100] = {};
+    u8 _writeableRegMap[0x100] = {};
 public:
     GameBoy(GameBoyModel type, const std::string &romFile);
     ~GameBoy();
@@ -60,9 +89,12 @@ public:
     void RunOneFrame();
 
     u8 Read(u16 addr);
+    u8 ReadRegister(u16 addr);
     void Write(u16 addr, u8 val);
+    void WriteRegister(u16 addr, u8 val);
 
     // maps "src" data into address ranges from start to end, if readOnly then only map into "read" mapping
     // NOTE: start/end must align to 256 byte blocks
     void MapMemory(u8 *src, u16 start, u16 end, bool readOnly);
+    void MapRegisters(u16 start, u16 end, bool canRead, bool canWrite);
 };

@@ -9,6 +9,7 @@ struct CpuState
 {
     bool halted;
     bool ime; // interrupt master enable
+    bool pendingIME; // IME set to enable on next instruction
 
     u16 pc; // program counter
     u16 sp; // stack pointer
@@ -112,9 +113,20 @@ public:
     inline void SetFlag(CpuFlag flag);
     inline void SetFlag(CpuFlag flag, bool val);
     inline void ClearFlag(CpuFlag flag);
+    inline u8 PopByte();
+    inline u16 PopWord();
+    inline void PushByte(u8 val);
+    inline void PushWord(u16 val);
 
+    inline void AND(u8 val);
+    inline void CALL(u16 addr);
+    inline void CP(u8 val);
     inline void DEC(u8 &reg);
+    inline void DEC(Reg16 &reg);
+    inline void INC(u8 &reg);
     inline void JP(u16 addr);
     inline void JR(bool condition, s8 offset);
+    inline void OR(u8 val);
+    inline void RET();
     inline void XOR(u8 val);
 };

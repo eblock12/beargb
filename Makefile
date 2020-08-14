@@ -14,7 +14,8 @@ OBJS = \
 	$(SRCDIR)/Kernel.o \
 	$(SRCDIR)/GameBoy.o \
 	$(SRCDIR)/GameBoyCart.o \
-	$(SRCDIR)/GameBoyCpu.o
+	$(SRCDIR)/GameBoyCpu.o \
+	$(SRCDIR)/GameBoyPpu.o
 
 ifdef USESDL
 	CPP = g++
