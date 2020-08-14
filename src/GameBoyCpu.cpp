@@ -54,14 +54,17 @@ void GameBoyCpu::RunOneInstruction()
     {
         u8 opcode = ReadImm();
 
-        std::cout << "$" << std::hex << std::setw(4) << std::setfill('0') << int(_state.pc - 1) << ' ' << GameBoyCpu::OpcodeNames[opcode] << std::endl;
+        std::cout << "$" << std::uppercase << std::hex << std::setw(4) << std::setfill('0') << int(_state.pc - 1) << ' ' << GameBoyCpu::OpcodeNames[opcode] << std::endl;
 
         switch (opcode)
         {
             case 0x00: // NOP
                 break;
+            case 0xC3: // JP a16
+                JP(ReadImmWord());
+                break;
             default:
-                std::cout << "HALT! Unhandled opcode: " << std::hex << int(opcode) << std::endl;
+                std::cout << "HALT! Unhandled opcode: " << std::uppercase << std::hex << int(opcode) << std::endl;
                 _state.halted = true;
                 break;
         }
@@ -85,9 +88,22 @@ u8 GameBoyCpu::ReadImm()
     return opcode;
 }
 
+u16 GameBoyCpu::ReadImmWord()
+{
+    u8 a = ReadImm();
+    u8 b = ReadImm();
+    return (b << 8) | a;
+}
+
 void GameBoyCpu::Write(u16 addr, u8 val)
 {
     _gameBoy->ExecuteTwoCycles();
     _gameBoy->Write(addr, val);
+    _gameBoy->ExecuteTwoCycles();
+}
+
+void GameBoyCpu::JP(u16 addr)
+{
+    _state.pc = addr;
     _gameBoy->ExecuteTwoCycles();
 }

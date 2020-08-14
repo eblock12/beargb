@@ -66,5 +66,8 @@ public:
 
     inline u8 Read(u16 addr);
     inline u8 ReadImm();
+    inline u16 ReadImmWord();
     inline void Write(u16 addr, u8 val);
+
+    inline void JP(u16 addr);
 };
