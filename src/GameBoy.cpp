@@ -1,4 +1,5 @@
 #include "GameBoy.h"
+#include <iostream>
 
 GameBoy::GameBoy(GameBoyModel model, const std::string &romFile)
 {
@@ -42,6 +43,9 @@ void GameBoy::Reset()
 
     _cart->Reset();
     _cpu->Reset();
+
+    MapMemory(_workRam, 0xC000, 0xDFFF, false /*readOnly*/);
+    MapMemory(_workRam, 0xE000, 0xFDFF, false /*readOnly*/);
 }
 
 void GameBoy::RunCycles(u32 cycles)
@@ -75,6 +79,19 @@ u8 GameBoy::Read(u16 addr)
 
 void GameBoy::Write(u16 addr, u8 val)
 {
+    // TODO: Check for I/O register
+
+    u8 block = addr >> 8;
+    if (_writeMap[block])
+    {
+        //std::cout << "Wrote to block=" << int(block) << " addr=" << int(addr & 0xFF) << " val=" << int(val) << std::endl;
+        _writeMap[block][addr & 0xFF] = val;
+    }
+    else
+    {
+        std::cout << "WARNING! Wrote to open bus, addr=" << std::hex << int(addr) << std::endl;
+    }
+    
 }
 
 void GameBoy::MapMemory(u8 *src, u16 start, u16 end, bool readOnly)
