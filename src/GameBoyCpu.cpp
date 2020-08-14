@@ -54,7 +54,20 @@ void GameBoyCpu::RunOneInstruction()
     {
         u8 opcode = ReadImm();
 
-        std::cout << "$" << std::uppercase << std::hex << std::setw(4) << std::setfill('0') << int(_state.pc - 1) << ' ' << GameBoyCpu::OpcodeNames[opcode] << std::endl;
+        std::cout << "$" << std::uppercase << std::hex << std::setw(4) << std::setfill('0') << int(_state.pc - 1) << ' ' << GameBoyCpu::OpcodeNames[opcode] <<
+            "\t | A=" << std::setw(2) << std::setfill('0') << int(_state.a) <<
+            " B=" << std::setw(2) << std::setfill('0') << int(_state.b) <<
+            " C=" << std::setw(2) << std::setfill('0') << int(_state.c) <<
+            " D=" << std::setw(2) << std::setfill('0') << int(_state.d) <<
+            " E=" << std::setw(2) << std::setfill('0') << int(_state.e) <<
+            " H=" << std::setw(2) << std::setfill('0') << int(_state.h) <<
+            " L=" << std::setw(2) << std::setfill('0') << int(_state.l) <<
+            " SP=" << std::setw(4) << std::setfill('0') << int(_state.sp) <<
+            " Flags=" << (_state.flags & CpuFlag::Zero ? 'Z' : 'z') <<
+            (_state.flags & CpuFlag::AddSub ? 'N' : 'n') <<
+            (_state.flags & CpuFlag::HalfCarry ? 'H' : 'h') <<
+            (_state.flags & CpuFlag::Carry ? 'C' : 'c') <<
+            std::endl;
 
         switch (opcode)
         {

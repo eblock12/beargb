@@ -23,7 +23,7 @@ struct CpuState
     u8 flags;
 };
 
-enum class CpuFlag
+enum CpuFlag : u8
 {
     Zero = 1 << 7,
     AddSub = 1 << 6,
