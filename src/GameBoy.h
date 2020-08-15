@@ -14,6 +14,16 @@ enum class GameBoyModel
     SuperGameBoy,
 };
 
+enum IrqFlag : u8
+{
+    // highest to lowest priority
+    VBlank = 1 << 0,
+    LcdStat = 1 << 1,
+    Timer = 1 << 2,
+    Serial = 1 << 3,
+    JoyPad = 1 << 4
+};
+
 struct GameBoyState
 {
     u64 cycleCount;
@@ -42,6 +52,45 @@ struct GameBoyState
     //  0: External Clock (500KHz Max.)
     //  1: Internal Clock (8192Hz)
     u8 serialControl;
+
+    // Incremented at 16.384KHz. Writing anything sets it to 0.
+    u16 divider;
+
+    // Incremented according to frequency in TAC (FF07)
+    // Generates an interrupt on overflow
+    u8 timerCounter;
+
+    // When the TIMA overflows, this data will be loaded.
+    u8 timerModulo;
+
+    // Bit 2: Timer Start/Stop
+    // Bit 1-0: Input Clock Select
+    //  00: 4.096 KHz
+    //  01: 262.144 KHz
+    //  10: 65.536 KHz
+    //  11: 16.384 KHz
+    u8 timerControl;
+
+    // track if counter was just loaded with Modulo during this cycle
+    bool timerResetting;
+
+    // track if the counter is about to be reset back to Modulo
+    bool timerResetPending;
+
+    // Source address upper byte (XX00h) for OAM DMA transfer
+    u8 oamDmaSrcAddr;
+
+    // waiting for next cycle to start OAM DMA
+    bool pendingOamDmaStart;
+
+    // counts down from 161 to 0
+    u8 oamDmaCounter;
+
+    // stores the buffered value from the previous cycle's read
+    u8 oamDmaBuffer;
+
+    // select joypad line to read
+    u8 joyPadInputSelect;
 };
 
 class GameBoy
@@ -97,4 +146,17 @@ public:
     // NOTE: start/end must align to 256 byte blocks
     void MapMemory(u8 *src, u16 start, u16 end, bool readOnly);
     void MapRegisters(u16 start, u16 end, bool canRead, bool canWrite);
+
+    u8 GetJoyPadState();
+
+    // interrupts
+    u8 GetPendingInterrupt();
+    void ResetInterruptFlags(u8 val);
+    void SetInterruptFlags(u8 val);
+
+    // timer
+    void ResetTimerCounter();
+
+    // dma
+    void ExecuteOamDma();
 };

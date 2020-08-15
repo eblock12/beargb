@@ -34,9 +34,12 @@ void GameBoy::ExecuteTwoCycles()
     _state.cycleCount += 2;
 
     // TODO: Run Timers
-    // TODO: Run DMA
 
     _ppu->ExecuteCycle();
+    if ((_state.cycleCount & 0x3) == 0) // run DMA on 4 cycle intervals
+    {
+        ExecuteOamDma();
+    }
 }
 
 void GameBoy::Reset()
@@ -97,10 +100,20 @@ u8 GameBoy::ReadRegister(u16 addr)
     {
         switch (addr)
         {
+            case 0xFF00: // P1
+                return GetJoyPadState();
             case 0xFF01: // SB - Serial transfer data
                 return _state.serialTransfer;
             case 0xFF02: // SC - Serial control
                 return _state.serialControl | 0x7E; // bits 1-6 are always set
+            case 0xFF04: // DIV - Divider Register
+                return _state.divider >> 8;
+            case 0xFF05: // TIMA - Timer Counter
+                return _state.timerCounter;
+            case 0xFF06: // TMA - Timer Modulo
+                return _state.timerModulo;
+            case 0xFF07: // TAC - Timer Control
+                return _state.timerControl | 0xF8; // upper 5 bits are always set
             case 0xFF0F: // IF - Interrupt Flags
                 return _state.interruptFlags | 0xE0; // upper 3 bits are always set
             case 0xFF10: case 0xFF11: case 0xFF12: case 0xFF13:
@@ -119,6 +132,9 @@ u8 GameBoy::ReadRegister(u16 addr)
             case 0xFF44: case 0xFF45: case 0xFF47: case 0xFF48:
             case 0xFF49: case 0xFF4A: case 0xFF4B:
                 return _ppu->ReadRegister(addr);
+            case 0xFF46: // DMA - OAM DMA Transfer
+                return _state.oamDmaSrcAddr;
+
         }
     }
     else if (addr >= 0xFE00)
@@ -168,12 +184,49 @@ void GameBoy::WriteRegister(u16 addr, u8 val)
     {
         switch (addr)
         {
+            case 0xFF00: // P1
+                _state.joyPadInputSelect = val;
+                return;
             case 0xFF01: // SB - Serial transfer data
                 _state.serialTransfer = val;
                 return;
             case 0xFF02: // SC - Serial control
                 _state.serialControl = val & 0x81; // only bits 0 and 7 are settable
                 // TODO: Pretend to start transfer, raise interrupts, etc?
+                return;
+            case 0xFF05: // TIMA - Timer Counter
+                // Quirk: "During the strange cycle [A] you can prevent the IF flag from being set and prevent the
+                // TIMA from being reloaded from TMA by writing a value to TIMA"
+                if (_state.timerResetPending)
+                {
+                    // abort reseting the timer if it was about to happen
+                    _state.timerResetPending = false;
+                }
+
+                // Quirk: "If you write to TIMA during the cycle that TMA is being loaded to it [B], the write will be
+                // ignored and TMA value will be written to TIMA instead."
+                if (!_state.timerResetting)
+                {
+                    // ignore write if about to reset the counter
+                    _state.timerCounter = val;
+                }
+                return;
+            case 0xFF06: // TMA - Timer Modulo
+                _state.timerModulo = val;
+                if (_state.timerResetting)
+                {
+                    // Quirk: "If TMA is written the same cycle it is loaded to TIMA, TIMA is also loaded with that value."
+                    _state.timerCounter = _state.timerModulo;
+                }
+                return;
+            case 0xFF07: // TAC - Timer Control
+                // Quirk: "When changing TAC register value, if the old selected bit by the multiplexer was 0, the new one is
+                // 1, and the new enable bit of TAC is set to 1, it will increase TIMA.""
+                if ((_state.timerControl & 0x4) != 0)
+                {
+
+                }
+                _state.timerControl = val;
                 return;
             case 0xFF0F: // IF - Interrupt Flags
                 _state.interruptFlags = val & 0x1F; // only lower 5 bits are settable
@@ -194,6 +247,11 @@ void GameBoy::WriteRegister(u16 addr, u8 val)
             case 0xFF45: case 0xFF47: case 0xFF48: case 0xFF49:
             case 0xFF4A: case 0xFF4B:
                 _ppu->WriteRegister(addr, val);
+                return;
+            case 0xFF46: // DMA Transfer and Start Address
+                _state.oamDmaSrcAddr = val;
+                _state.pendingOamDmaStart = true; // start DMA on next cycle
+                //std::cout << "DMA scheduled\n";
                 return;
         }
     }
@@ -234,5 +292,91 @@ void GameBoy::MapRegisters(u16 start, u16 end, bool canRead, bool canWrite)
         u8 block = addr >> 8;
         _readableRegMap[block] = canRead;
         _writeableRegMap[block] = canWrite;
+    }
+}
+
+u8 GameBoy::GetJoyPadState()
+{
+    // TODO: Return actual button states
+
+    return 0xCF | (_state.joyPadInputSelect & 0x30);
+}
+
+u8 GameBoy::GetPendingInterrupt()
+{
+    u8 interruptPending = _state.interruptEnable & _state.interruptFlags; // if enabled AND requested
+    if (interruptPending != 0)
+    {
+        if ((interruptPending & IrqFlag::VBlank) != 0)
+        {
+            return IrqFlag::VBlank;
+        }
+        else if ((interruptPending & IrqFlag::LcdStat) != 0)
+        {
+            return IrqFlag::LcdStat;
+        }
+        else if ((interruptPending & IrqFlag::Timer) != 0)
+        {
+            return IrqFlag::Timer;
+        }
+        else if ((interruptPending & IrqFlag::Serial) != 0)
+        {
+            return IrqFlag::Serial;
+        }
+        else if ((interruptPending & IrqFlag::JoyPad) != 0)
+        {
+            return IrqFlag::JoyPad;
+        }
+    }
+
+    return 0;
+}
+
+void GameBoy::ResetInterruptFlags(u8 val)
+{
+    _state.interruptFlags &= ~val;
+}
+
+void GameBoy::SetInterruptFlags(u8 val)
+{
+    _state.interruptFlags |= val;
+}
+
+void GameBoy::ResetTimerCounter()
+{
+    // timer has overflowed and is being reset
+    _state.timerCounter = _state.timerModulo;
+    _state.interruptFlags |= IrqFlag::Timer; // raise timer interrupt
+
+    // needed to emulate timing quirks around the timer being reset
+    _state.timerResetPending = false;
+    _state.timerResetting = true;
+}
+
+void GameBoy::ExecuteOamDma()
+{
+    if (!_cpu->IsHalted())
+    {
+        if (_state.oamDmaCounter > 0)
+        {
+            // first DMA cycle does not write since nothing has been fetched yet
+            if (_state.oamDmaCounter < 161)
+            {
+                _ppu->WriteOamRam(160 - _state.oamDmaCounter, _state.oamDmaBuffer, true /*dmaBypass*/);
+
+                //std::cout << "DMA write $" << int(160 - _state.oamDmaCounter) << "=" << int(_state.oamDmaBuffer) << std::endl;
+            }
+
+            _state.oamDmaCounter--;
+            _state.oamDmaBuffer = Read((_state.oamDmaSrcAddr << 8) + (160 - _state.oamDmaCounter));
+            //std::cout << "DMA read $" << int((_state.oamDmaSrcAddr << 8) + (160 - _state.oamDmaCounter)) << "=" << int(_state.oamDmaBuffer) << std::endl;
+        }
+
+        if (_state.pendingOamDmaStart)
+        {
+            _state.pendingOamDmaStart = false;
+            _state.oamDmaCounter = 161;
+            //std::cout << "DMA start\n";
+        }
     }
 }

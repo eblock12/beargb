@@ -102,6 +102,8 @@ public:
     GameBoyCpu(GameBoy *gameBoy);
     ~GameBoyCpu();
 
+    bool IsHalted() { return _state.halted; }
+
     void Reset();
     void RunOneInstruction();
 
@@ -118,15 +120,33 @@ public:
     inline void PushByte(u8 val);
     inline void PushWord(u16 val);
 
+    inline void ADD(u8 val);
+    inline void ADD(Reg16 &reg, u16 val);
     inline void AND(u8 val);
     inline void CALL(u16 addr);
     inline void CP(u8 val);
+    inline void CPL();
     inline void DEC(u8 &reg);
     inline void DEC(Reg16 &reg);
+    inline void DEC_Indirect(u16 addr);
+    inline void DEC_SP();
     inline void INC(u8 &reg);
+    inline void INC(Reg16 &reg);
+    inline void INC_Indirect(u16 addr);
+    inline void INC_SP();
     inline void JP(u16 addr);
+    inline void JP(bool condition, u16 addr);
+    inline void JR(s8 offset);
     inline void JR(bool condition, s8 offset);
     inline void OR(u8 val);
+    inline void PREFIX();
+    inline void POP(Reg16 &reg);
+    inline void PUSH(Reg16 &reg);
+    inline void RES_Indirect(u16 addr, u8 bit);
     inline void RET();
+    inline void RET(bool condition);
+    inline void RETI();
+    inline void RST(u8 val);
+    inline void SWAP(u8 &reg);
     inline void XOR(u8 val);
 };

@@ -30,6 +30,19 @@ void GameBoyPpu::ExecuteCycle()
                 case 0:
                     _state.lcdCurrentScanline = _state.scanline;
                     break;
+                case 3:
+                    if (_state.scanline == 0)
+                    {
+                        _state.lcdStatus &= 0x3; // H-Blank for one cycle for scanline 0
+                    }
+                    break;
+                case 4:
+                    _state.lcdStatus |= 0x2; // OAM search mode
+                    _state.lcdStatus &= 0x1;
+                    break;
+                case 84:
+                    _state.lcdStatus |= 0x3; // Drawing mode
+                    break;
                 case 456: // end of scanline
                     _state.tick = 0;
                     _state.scanline++;
@@ -46,12 +59,21 @@ void GameBoyPpu::ExecuteCycle()
             // currently in v-blank
             switch (_state.tick)
             {
+                case 4:
+                    if (_state.scanline < 153)
+                    {
+                        _state.lcdStatus &= 0x2;
+                        _state.lcdStatus |= 0x1; // v-blank mode
+                        _gameBoy->SetInterruptFlags(IrqFlag::VBlank);
+                    }
+                    break;
                 case 12:
                     if (_state.scanline == 153)
                     {
                         // on last line of v-blank this goes to 0 early
                         _state.lcdCurrentScanline = 0;
                     }
+                    break;
                 case 456:
                     _state.tick = 0;
                     _state.scanline++;
@@ -191,5 +213,29 @@ void GameBoyPpu::WriteVideoRam(u16 addr, u8 val)
     {
         // TODO: Allow accessing high CGB video RAM bank
         _videoRam[addr & 0x1FFF] = val;
+    }
+}
+
+u8 GameBoyPpu::ReadOamRam(u8 addr)
+{
+    if ((addr < 160) && (((_state.lcdStatus & 0x03) <= 1))) // if in DMA or V-Blank or H-Blank, reads are allowed
+    {
+        return _oamRam[addr];
+    }
+    else
+    {
+        std::cout << "Warning! Disallowed OAM read at addr " << std::hex << int(addr) << std::endl;
+    }
+}
+
+void GameBoyPpu::WriteOamRam(u8 addr, u8 val, bool dmaBypass)
+{
+    if ((addr < 160) && (dmaBypass || ((_state.lcdStatus & 0x03) <= 1))) // if in DMA or V-Blank or H-Blank, writes are allowed
+    {
+        _oamRam[addr] = val;
+    }
+    else
+    {
+        std::cout << "Warning! Disallowed OAM read at addr " << std::hex << int(addr) << std::endl;
     }
 }

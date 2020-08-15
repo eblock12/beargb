@@ -28,7 +28,11 @@ struct PpuState
     // Bit 4: Mode 1 V-Blank Check Enable
     // Bit 3: Mode 0 H-Blank Check Enable
     // Bit 2: LY=LYC Comparison Signal
-    // Bit 1-0: Screen Mode (see mode below)
+    // Bit 1-0: Screen Mode
+    //  Mode 00: H-Blank
+    //  Mode 01: V-Blank
+    //  Mode 10: Search OAM
+    //  Mode 11: Drawing to LCD
     u8 lcdStatus;
 
     // X coordinate of the background at the upper left pixel of the LCD
@@ -77,4 +81,7 @@ public:
 
     u8 ReadVideoRam(u16 addr);
     void WriteVideoRam(u16 addr, u8 val);
+
+    u8 ReadOamRam(u8 addr);
+    void WriteOamRam(u8 addr, u8 val, bool dmaBypass);
 };
