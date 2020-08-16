@@ -113,7 +113,7 @@ private:
     PpuFetcher _fetcherBg;
     PpuFetcher _fetcherOam;
 
-    u16 _pixelsRendered;
+    s16 _pixelsRendered;
     u8 _bgColumn;
     u32 *_pixelBuffer;
     u32 _gbPal[4] =
