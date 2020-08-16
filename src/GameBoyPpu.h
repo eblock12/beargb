@@ -60,6 +60,45 @@ struct PpuState
     u8 windowY;
 };
 
+struct PixelFifoEntry
+{
+    u8 color;
+    u8 attr;
+};
+
+struct PixelFifo
+{
+    u8 data[8] = {};
+    u8 length;
+    u8 position;
+
+    void Clear()
+    {
+        for (int i = 0; i < 8; i++)
+        {
+            data[i] = {};
+        }
+        position = 0;
+        length = 0;
+    }
+
+    void Pop()
+    {
+        length--;
+        data[position] = 0;
+        position++;
+        position = position & 7;
+    }
+};
+
+struct PpuFetcher
+{
+    u8 tick;
+    u8 tileData0;
+    u8 tileData1;
+    u16 tileSetAddr;
+};
+
 class GameBoyPpu
 {
 private:
@@ -69,7 +108,26 @@ private:
     u8 *_videoRam = nullptr;
     u8 *_oamRam = nullptr;
 
+    PixelFifo _fifoBg;
+    PixelFifo _fifoOam;
+    PpuFetcher _fetcherBg;
+    PpuFetcher _fetcherOam;
+
+    u16 _pixelsRendered;
+    u8 _bgColumn;
+    u32 *_pixelBuffer;
+    u32 _gbPal[4] =
+    {
+        0xFFFFFF00,
+        0x80808000,
+        0x40404000,
+        0x00000000,
+    };
+
+    inline void StartRender();
     void SetLcdPower(bool enable);
+    inline void TickDrawing();
+    inline void TickBgFetcher();
 public:
     GameBoyPpu(GameBoy *gameBoy, u8 *videoRam, u8 *oamRam);
     ~GameBoyPpu();
@@ -84,4 +142,6 @@ public:
 
     u8 ReadOamRam(u8 addr);
     void WriteOamRam(u8 addr, u8 val, bool dmaBypass);
+
+    u32 *GetPixelBuffer() { return _pixelBuffer; }
 };

@@ -131,11 +131,12 @@ ShutdownMode Kernel::Run()
     while (running)
     {
         _gameBoy->RunOneFrame();
+        u32 *gameBoyPixels = _gameBoy->GetPixelBuffer();
 
 #if USE_SDL
         SDL_LockSurface(_surface);
-        //memset(_surface->pixels, 0xFF, _surface->h * _surface->pitch);
-
+        memset(_surface->pixels, 0, _surface->h * _surface->pitch);
+/*
         for (int x = 0; x < _surface->w; x++)
         for (int y = 0; y < _surface->h; y++)
         {
@@ -143,6 +144,19 @@ ShutdownMode Kernel::Run()
             ((u8*)_surface->pixels)[(y * _surface->w + x) * 4 + 1] = x / 2 & 0xFF; // green
             ((u8*)_surface->pixels)[(y * _surface->w + x) * 4 + 2] = 0xFF - y & 0xFF; // red
             ((u8*)_surface->pixels)[(y * _surface->w + x) * 4 + 3] = 0; // alpha
+        }
+*/
+        int cx = 80;
+        int cy = 48;
+        for (int x = 0; x < 160; x++)
+        for (int y = 0; y < 144; y++)
+        {
+            uint gbColor = gameBoyPixels[y * 160 + x];
+
+            ((u8*)_surface->pixels)[((y + cy) * _surface->w + x + cx) * 4 + 0] = gbColor >> 8;
+            ((u8*)_surface->pixels)[((y + cy) * _surface->w + x + cx) * 4 + 1] = gbColor >> 16;
+            ((u8*)_surface->pixels)[((y + cy) * _surface->w + x + cx) * 4 + 2] = gbColor >> 24;
+            ((u8*)_surface->pixels)[((y + cy) * _surface->w + x + cx) * 4 + 3] = 0; // alpha
         }
 
         SDL_UnlockSurface(_surface);

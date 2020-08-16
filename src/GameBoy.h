@@ -130,6 +130,8 @@ public:
     GameBoy(GameBoyModel type, const std::string &romFile);
     ~GameBoy();
 
+    u32 *GetPixelBuffer() { return _ppu->GetPixelBuffer(); }
+
     GameBoyModel GetModel() { return _model; }
 
     void ExecuteTwoCycles();

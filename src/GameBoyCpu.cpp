@@ -114,7 +114,7 @@ void GameBoyCpu::RunOneInstruction()
         }
 
         u8 opcode = ReadImm();
-
+#if TRACE
         std::cout << "$" << std::uppercase << std::hex << std::setw(4) << std::setfill('0') << int(_state.pc - 1) << ' ' << GameBoyCpu::OpcodeNames[opcode] <<
             "\t | A=" << std::setw(2) << std::setfill('0') << int(_state.a) <<
             " B=" << std::setw(2) << std::setfill('0') << int(_state.b) <<
@@ -128,6 +128,7 @@ void GameBoyCpu::RunOneInstruction()
             (GetFlag(CpuFlag::HalfCarry) ? 'H' : 'h') <<
             (GetFlag(CpuFlag::Carry) ? 'C' : 'c') <<
             std::endl;
+#endif
 
         switch (opcode)
         {
