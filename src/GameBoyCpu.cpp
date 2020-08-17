@@ -816,7 +816,7 @@ void GameBoyCpu::RunOneInstruction()
                 RST(0x20);
                 break;
             case 0xE8: // ADD SP
-                ADD_SP(ReadImmWord());
+                ADD_SP(ReadImm());
                 break;
             case 0xE9: // JP (HL)
                 _state.pc = _regHL.GetWord();
@@ -1007,7 +1007,6 @@ void GameBoyCpu::ADD_SP(s8 val)
     _gameBoy->ExecuteTwoCycles();
     _gameBoy->ExecuteTwoCycles();
 }
-
 
 void GameBoyCpu::AND(u8 val)
 {

@@ -35,14 +35,23 @@ struct PpuState
     //  Mode 11: Drawing to LCD
     u8 lcdStatus;
 
+    // keep track if the STAT irq was just raised
+    bool raisedStatIrq;
+
     // X coordinate of the background at the upper left pixel of the LCD
     u8 scrollX;
 
     // Y coordinate of the background at the upper left pixel of the LCD
     u8 scrollY;
 
-    // current LCD scanline (update is delayed versus internal scanline counter)
-    u8 lcdCurrentScanline;
+    // Current Y coordinate (update is delayed versus internal scanline counter)
+    u8 ly;
+
+    // Compared with LY and sets coincident flag on match
+    u8 lyCompare;
+
+    // Flag that is set when LY and LYC are matching
+    bool lyCoincident;
 
     // Background & Window Palette Data
     u8 bgPal;
@@ -59,6 +68,28 @@ struct PpuState
     // Y coordinate of the upper left corner of the window
     u8 windowY;
 };
+
+namespace LcdStatusFlags
+{
+    enum LcdStatusFlags : u8
+    {
+        CoincidentScanline = 0x40,
+        OamSearch = 0x20,
+        VBlank = 0x10,
+        HBlank = 0x08
+    };
+}
+
+namespace LcdModeFlag
+{
+    enum LcdModeFlag : u8
+    {
+        Drawing = 0x03,
+        OamSearch = 0x02,
+        VBlank = 0x01,
+        HBlank = 0x00
+    };
+}
 
 struct PixelFifoEntry
 {
@@ -113,6 +144,7 @@ private:
     PpuFetcher _fetcherBg;
     PpuFetcher _fetcherOam;
 
+    bool _renderPaused;
     s16 _pixelsRendered;
     u8 _bgColumn;
     u32 *_pixelBuffer;
@@ -123,11 +155,14 @@ private:
         0x40404000,
         0x00000000,
     };
+    bool _usingWindow;
+    s16 _windowOffset;
 
     inline void StartRender();
     void SetLcdPower(bool enable);
     inline void TickDrawing();
     inline void TickBgFetcher();
+    inline void CheckLcdStatusIrq();
 public:
     GameBoyPpu(GameBoy *gameBoy, u8 *videoRam, u8 *oamRam);
     ~GameBoyPpu();
