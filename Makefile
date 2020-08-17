@@ -6,8 +6,9 @@
 #USESDL = 1
 
 SRCDIR = src
-CIRCLEHOME = ext/circle
-STDLIB_SUPPORT=3
+CIRCLESTDLIBHOME = ext/circle-stdlib
+CIRCLEHOME = ext/circle-stdlib/libs/circle
+NEWLIBDIR = ext/circle-stdlib/install/$(NEWLIB_ARCH)
 
 OBJS = \
 	$(SRCDIR)/main.o \
@@ -35,17 +36,22 @@ clean:
 
 else # !USESDL
 
-	CPPFLAGS = -I$(SRCDIR) -std=c++17 -O3 -DUSE_CIRCLE
+	include $(CIRCLESTDLIBHOME)/Config.mk
+	include $(CIRCLEHOME)/Rules.mk
 
-	LIBS = \
+	CFLAGS += -I "$(NEWLIBDIR)/include" -I $(STDDEF_INCPATH) -std=c++17 -O3 -DUSE_CIRCLE
+
+	LIBS := "$(NEWLIBDIR)/lib/libm.a" "$(NEWLIBDIR)/lib/libc.a" "$(NEWLIBDIR)/lib/libcirclenewlib.a" \
+		$(CIRCLEHOME)/addon/SDCard/libsdcard.a \
 		$(CIRCLEHOME)/lib/usb/libusb.a \
 		$(CIRCLEHOME)/lib/input/libinput.a \
+		$(CIRCLEHOME)/addon/fatfs/libfatfs.a \
 		$(CIRCLEHOME)/lib/fs/libfs.a \
+		$(CIRCLEHOME)/lib/net/libnet.a \
+		$(CIRCLEHOME)/lib/sched/libsched.a \
 		$(CIRCLEHOME)/lib/libcircle.a
-
-	include $(CIRCLEHOME)/Rules.mk
 
 endif
 
 circle:
-	$(CIRCLEHOME) && ./makeall clean && ./makeall
+	cd $(CIRCLEHOME) && ./configure && make
