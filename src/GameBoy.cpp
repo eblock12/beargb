@@ -33,8 +33,7 @@ void GameBoy::ExecuteTwoCycles()
 {
     _state.cycleCount += 2;
 
-    // TODO: Run Timers
-
+    ExecuteTimer();
     _ppu->ExecuteCycle();
     if ((_state.cycleCount & 0x3) == 0) // run DMA on 4 cycle intervals
     {
@@ -53,6 +52,10 @@ void GameBoy::Reset()
     MapMemory(_workRam, 0xE000, 0xFDFF, false /*readOnly*/);
     MapRegisters(0x8000, 0x9FFF, true /*canRead*/, true /*canWrite*/);
     MapRegisters(0xFE00, 0xFFFF, true /*canRead*/, true /*canWrite*/);
+
+    _cart->RefreshMemoryMap();
+
+    _state.timerDivider = 1024;
 }
 
 void GameBoy::RunCycles(u32 cycles)
@@ -145,6 +148,10 @@ u8 GameBoy::ReadRegister(u16 addr)
     {
         return _ppu->ReadVideoRam(addr);
     }
+    else
+    {
+        return _cart->ReadRegister(addr);
+    }
 
     std::cout << "Read from unmapped register, addr=" << std::hex << int(addr) << std::endl;
     return 0xFF;
@@ -194,6 +201,9 @@ void GameBoy::WriteRegister(u16 addr, u8 val)
                 _state.serialControl = val & 0x81; // only bits 0 and 7 are settable
                 // TODO: Pretend to start transfer, raise interrupts, etc?
                 return;
+            case 0xFF04: // DIV - Divider Register
+                _state.divider = 0;
+                return;
             case 0xFF05: // TIMA - Timer Counter
                 // Quirk: "During the strange cycle [A] you can prevent the IF flag from being set and prevent the
                 // TIMA from being reloaded from TMA by writing a value to TIMA"
@@ -220,13 +230,28 @@ void GameBoy::WriteRegister(u16 addr, u8 val)
                 }
                 return;
             case 0xFF07: // TAC - Timer Control
+                _state.timerControl = val;
+                switch (val & 0x03)
+                {
+                    case 0:
+                        _state.timerDivider = 512; // 4.096 KHz
+                        break;
+                    case 1:
+                        _state.timerDivider = 8;  // 262.144 KHz
+                        break;
+                    case 2:
+                        _state.timerDivider = 32; // 65.536 KHz
+                        break;
+                    case 3:
+                        _state.timerDivider = 128; // 16.384 KHz
+                        break;
+                }
                 // Quirk: "When changing TAC register value, if the old selected bit by the multiplexer was 0, the new one is
                 // 1, and the new enable bit of TAC is set to 1, it will increase TIMA.""
                 if ((_state.timerControl & 0x4) != 0)
                 {
 
                 }
-                _state.timerControl = val;
                 return;
             case 0xFF0F: // IF - Interrupt Flags
                 _state.interruptFlags = val & 0x1F; // only lower 5 bits are settable
@@ -264,6 +289,11 @@ void GameBoy::WriteRegister(u16 addr, u8 val)
         _ppu->WriteVideoRam(addr, val);
         return;
     }
+    else
+    {
+        _cart->WriteRegister(addr, val);
+        return;
+    }
 
     std::cout << "Wrote to unmapped register, addr=" << std::hex << int(addr) << std::endl;
 }
@@ -285,6 +315,19 @@ void GameBoy::MapMemory(u8 *src, u16 start, u16 end, bool readOnly)
     }
 }
 
+void GameBoy::UnmapMemory(u16 start, u16 end)
+{
+    // NOTE: This assumes start and end are aligned to 256 byte block lengths
+
+    // walk through each block and map "src" into it
+    for (u32 addr = start; addr < end; addr += 0x100)
+    {
+        u8 block = addr >> 8;
+        _readMap[block] = nullptr;
+        _writeMap[block] = nullptr;
+    }
+}
+
 void GameBoy::MapRegisters(u16 start, u16 end, bool canRead, bool canWrite)
 {
     for (u32 addr = start; addr < end; addr += 0x100)
@@ -295,11 +338,22 @@ void GameBoy::MapRegisters(u16 start, u16 end, bool canRead, bool canWrite)
     }
 }
 
+void GameBoy::UnmapRegisters(u16 start, u16 end)
+{
+    for (u32 addr = start; addr < end; addr += 0x100)
+    {
+        u8 block = addr >> 8;
+        _readableRegMap[block] = false;
+        _writeableRegMap[block] = false;
+    }
+}
+
 u8 GameBoy::GetJoyPadState()
 {
     // TODO: Return actual button states
+    u8 buttons = 0x0F;
 
-    return 0xCF | (_state.joyPadInputSelect & 0x30);
+    return buttons | (_state.joyPadInputSelect & 0x30) | 0xC0;
 }
 
 u8 GameBoy::GetPendingInterrupt()
@@ -351,6 +405,33 @@ void GameBoy::ResetTimerCounter()
     // needed to emulate timing quirks around the timer being reset
     _state.timerResetPending = false;
     _state.timerResetting = true;
+}
+
+void GameBoy::ExecuteTimer()
+{
+    if ((_state.divider & 0x03) == 2)
+    {
+        _state.timerResetting = false;
+        if (_state.timerResetPending)
+        {
+            ResetTimerCounter();
+        }
+    }
+
+    u16 newDivider = _state.divider + 2;
+
+    if (((_state.timerControl & 0x4) != 0) &&
+        !(newDivider & _state.timerDivider) &&
+        (_state.divider & _state.timerDivider))
+    {
+        _state.timerCounter++;
+        if (_state.timerCounter == 0)
+        {
+            _state.timerResetPending = true;
+        }
+    }
+
+    _state.divider = newDivider;
 }
 
 void GameBoy::ExecuteOamDma()

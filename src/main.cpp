@@ -7,10 +7,16 @@
 #include <circle/startup.h>
 #endif
 
-int main()
+int main(int argc, char *argv[])
 {
+    char *romFile = nullptr;
+    if (argc > 1)
+    {
+        romFile = argv[1];
+    }
+
     Kernel kernel;
-    if (!kernel.Initialize())
+    if (!kernel.Initialize(romFile))
     {
 #if !USE_SDL
         halt();

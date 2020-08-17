@@ -53,7 +53,7 @@ Kernel::~Kernel()
 {
 }
 
-bool Kernel::Initialize()
+bool Kernel::Initialize(char *romFile)
 {
     bool ok = true;
 
@@ -86,7 +86,12 @@ bool Kernel::Initialize()
     ok = ok && _usbhci.Initialize();
 #endif
 
-    _gameBoy.reset(new GameBoy(GameBoyModel::GameBoy, "tetris.gb"));
+    if (romFile == nullptr)
+    {
+        romFile = "tetris.gb";
+    }
+
+    _gameBoy.reset(new GameBoy(GameBoyModel::GameBoy, romFile));
 
     return ok;
 }
@@ -131,6 +136,7 @@ ShutdownMode Kernel::Run()
     while (running)
     {
         _gameBoy->RunOneFrame();
+
         u32 *gameBoyPixels = _gameBoy->GetPixelBuffer();
 
 #if USE_SDL

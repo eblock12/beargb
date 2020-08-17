@@ -60,7 +60,7 @@ public:
 	Kernel();
 	~Kernel();
 
-	bool Initialize();
+	bool Initialize(char *romFile);
 
 	ShutdownMode Run();
 };

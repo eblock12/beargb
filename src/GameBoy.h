@@ -71,6 +71,9 @@ struct GameBoyState
     //  11: 16.384 KHz
     u8 timerControl;
 
+    // Dividier for input clock (controlled by TimerControl reg)
+    u16 timerDivider;
+
     // track if counter was just loaded with Modulo during this cycle
     bool timerResetting;
 
@@ -147,7 +150,9 @@ public:
     // maps "src" data into address ranges from start to end, if readOnly then only map into "read" mapping
     // NOTE: start/end must align to 256 byte blocks
     void MapMemory(u8 *src, u16 start, u16 end, bool readOnly);
+    void UnmapMemory(u16 start, u16 end);
     void MapRegisters(u16 start, u16 end, bool canRead, bool canWrite);
+    void UnmapRegisters(u16 start, u16 end);
 
     u8 GetJoyPadState();
 
@@ -158,7 +163,8 @@ public:
 
     // timer
     void ResetTimerCounter();
+    inline void ExecuteTimer();
 
     // dma
-    void ExecuteOamDma();
+    inline void ExecuteOamDma();
 };

@@ -264,6 +264,7 @@ void GameBoyPpu::SetLcdPower(bool enable)
     if (_state.lcdPower) // powering on
     {
         _state.tick = 0;
+        StartRender();
     }
     else // powering off
     {
@@ -322,7 +323,8 @@ u8 GameBoyPpu::ReadVideoRam(u16 addr)
     {
         // VRAM is disallowed in mode 3
         std::cout << "Warning! Disallowed VRAM read at addr " << std::hex << int(addr) << std::endl;
-        return 0xFF;
+        //return 0xFF;
+        return _videoRam[addr & 0x1FFF];
     }
     else
     {
@@ -337,6 +339,7 @@ void GameBoyPpu::WriteVideoRam(u16 addr, u8 val)
     {
         // VRAM is disallowed in mode 3
         std::cout << "Warning! Disallowed VRAM write at addr " << std::hex << int(addr) << std::endl;
+        _videoRam[addr & 0x1FFF] = val;
     }
     else
     {
