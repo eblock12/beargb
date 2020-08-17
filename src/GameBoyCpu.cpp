@@ -1017,7 +1017,7 @@ void GameBoyCpu::AND(u8 val)
     ClearFlag(CpuFlag::Carry);
 }
 
-void GameBoyCpu::BIT(u8 val, u8 mask)
+void GameBoyCpu::BIT_(u8 val, u8 mask)
 {
     SetFlag(CpuFlag::Zero, (val & mask) == 0);
     ClearFlag(CpuFlag::AddSub);
@@ -1418,196 +1418,196 @@ void GameBoyCpu::PREFIX()
             SRL(_state.a);
             break;
         case 0x40: // BIT 0,B
-            BIT(_state.b, 1 << 0);
+            BIT_(_state.b, 1 << 0);
             break;
         case 0x41: // BIT 0,C
-            BIT(_state.c, 1 << 0);
+            BIT_(_state.c, 1 << 0);
             break;
         case 0x42: // BIT 0,D
-            BIT(_state.d, 1 << 0);
+            BIT_(_state.d, 1 << 0);
             break;
         case 0x43: // BIT 0,E
-            BIT(_state.e, 1 << 0);
+            BIT_(_state.e, 1 << 0);
             break;
         case 0x44: // BIT 0,H
-            BIT(_state.h, 1 << 0);
+            BIT_(_state.h, 1 << 0);
             break;
         case 0x45: // BIT 0,L
-            BIT(_state.l, 1 << 0);
+            BIT_(_state.l, 1 << 0);
             break;
         case 0x46: // BIT 0,(HL)
-            BIT(Read(_regHL.GetWord()), 1 << 0);
+            BIT_(Read(_regHL.GetWord()), 1 << 0);
             break;
         case 0x47: // BIT 0,A
-            BIT(_state.a, 1 << 0);
+            BIT_(_state.a, 1 << 0);
             break;
         case 0x48: // BIT 1,B
-            BIT(_state.b, 1 << 1);
+            BIT_(_state.b, 1 << 1);
             break;
         case 0x49: // BIT 1,C
-            BIT(_state.c, 1 << 1);
+            BIT_(_state.c, 1 << 1);
             break;
         case 0x4A: // BIT 1,D
-            BIT(_state.d, 1 << 1);
+            BIT_(_state.d, 1 << 1);
             break;
         case 0x4B: // BIT 1,E
-            BIT(_state.e, 1 << 1);
+            BIT_(_state.e, 1 << 1);
             break;
         case 0x4C: // BIT 1,H
-            BIT(_state.h, 1 << 1);
+            BIT_(_state.h, 1 << 1);
             break;
         case 0x4D: // BIT 1,L
-            BIT(_state.l, 1 << 1);
+            BIT_(_state.l, 1 << 1);
             break;
         case 0x4E: // BIT 1,(HL)
-            BIT(Read(_regHL.GetWord()), 1 << 1);
+            BIT_(Read(_regHL.GetWord()), 1 << 1);
             break;
         case 0x4F: // BIT 1,A
-            BIT(_state.a, 1 << 1);
+            BIT_(_state.a, 1 << 1);
             break;
         case 0x50: // BIT 2,B
-            BIT(_state.b, 1 << 2);
+            BIT_(_state.b, 1 << 2);
             break;
         case 0x51: // BIT 2,C
-            BIT(_state.c, 1 << 2);
+            BIT_(_state.c, 1 << 2);
             break;
         case 0x52: // BIT 2,D
-            BIT(_state.d, 1 << 2);
+            BIT_(_state.d, 1 << 2);
             break;
         case 0x53: // BIT 2,E
-            BIT(_state.e, 1 << 2);
+            BIT_(_state.e, 1 << 2);
             break;
         case 0x54: // BIT 2,H
-            BIT(_state.h, 1 << 2);
+            BIT_(_state.h, 1 << 2);
             break;
         case 0x55: // BIT 2,L
-            BIT(_state.l, 1 << 2);
+            BIT_(_state.l, 1 << 2);
             break;
         case 0x56: // BIT 2,(HL)
-            BIT(Read(_regHL.GetWord()), 1 << 2);
+            BIT_(Read(_regHL.GetWord()), 1 << 2);
             break;
         case 0x57: // BIT 2,A
-            BIT(_state.a, 1 << 2);
+            BIT_(_state.a, 1 << 2);
             break;
         case 0x58: // BIT 3,B
-            BIT(_state.b, 1 << 3);
+            BIT_(_state.b, 1 << 3);
             break;
         case 0x59: // BIT 3,C
-            BIT(_state.c, 1 << 3);
+            BIT_(_state.c, 1 << 3);
             break;
         case 0x5A: // BIT 3,D
-            BIT(_state.d, 1 << 3);
+            BIT_(_state.d, 1 << 3);
             break;
         case 0x5B: // BIT 3,E
-            BIT(_state.e, 1 << 3);
+            BIT_(_state.e, 1 << 3);
             break;
         case 0x5C: // BIT 3,H
-            BIT(_state.h, 1 << 3);
+            BIT_(_state.h, 1 << 3);
             break;
         case 0x5D: // BIT 3,L
-            BIT(_state.l, 1 << 3);
+            BIT_(_state.l, 1 << 3);
             break;
         case 0x5E: // BIT 3,(HL)
-            BIT(Read(_regHL.GetWord()), 1 << 3);
+            BIT_(Read(_regHL.GetWord()), 1 << 3);
             break;
         case 0x5F: // BIT 3,A
-            BIT(_state.a, 1 << 3);
+            BIT_(_state.a, 1 << 3);
             break;
         case 0x60: // BIT 4,B
-            BIT(_state.b, 1 << 4);
+            BIT_(_state.b, 1 << 4);
             break;
         case 0x61: // BIT 4,C
-            BIT(_state.c, 1 << 4);
+            BIT_(_state.c, 1 << 4);
             break;
         case 0x62: // BIT 4,D
-            BIT(_state.d, 1 << 4);
+            BIT_(_state.d, 1 << 4);
             break;
         case 0x63: // BIT 4,E
-            BIT(_state.e, 1 << 4);
+            BIT_(_state.e, 1 << 4);
             break;
         case 0x64: // BIT 4,H
-            BIT(_state.h, 1 << 4);
+            BIT_(_state.h, 1 << 4);
             break;
         case 0x65: // BIT 4,L
-            BIT(_state.l, 1 << 4);
+            BIT_(_state.l, 1 << 4);
             break;
         case 0x66: // BIT 4,(HL)
-            BIT(Read(_regHL.GetWord()), 1 << 4);
+            BIT_(Read(_regHL.GetWord()), 1 << 4);
             break;
         case 0x67: // BIT 4,A
-            BIT(_state.a, 1 << 4);
+            BIT_(_state.a, 1 << 4);
             break;
         case 0x68: // BIT 5,B
-            BIT(_state.b, 1 << 5);
+            BIT_(_state.b, 1 << 5);
             break;
         case 0x69: // BIT 5,C
-            BIT(_state.c, 1 << 5);
+            BIT_(_state.c, 1 << 5);
             break;
         case 0x6A: // BIT 5,D
-            BIT(_state.d, 1 << 5);
+            BIT_(_state.d, 1 << 5);
             break;
         case 0x6B: // BIT 5,E
-            BIT(_state.e, 1 << 5);
+            BIT_(_state.e, 1 << 5);
             break;
         case 0x6C: // BIT 5,H
-            BIT(_state.h, 1 << 5);
+            BIT_(_state.h, 1 << 5);
             break;
         case 0x6D: // BIT 5,L
-            BIT(_state.l, 1 << 5);
+            BIT_(_state.l, 1 << 5);
             break;
         case 0x6E: // BIT 5,(HL)
-            BIT(Read(_regHL.GetWord()), 1 << 5);
+            BIT_(Read(_regHL.GetWord()), 1 << 5);
             break;
         case 0x6F: // BIT 5,A
-            BIT(_state.a, 1 << 5);
+            BIT_(_state.a, 1 << 5);
             break;
         case 0x70: // BIT 6,B
-            BIT(_state.b, 1 << 6);
+            BIT_(_state.b, 1 << 6);
             break;
         case 0x71: // BIT 6,C
-            BIT(_state.c, 1 << 6);
+            BIT_(_state.c, 1 << 6);
             break;
         case 0x72: // BIT 6,D
-            BIT(_state.d, 1 << 6);
+            BIT_(_state.d, 1 << 6);
             break;
         case 0x73: // BIT 6,E
-            BIT(_state.e, 1 << 6);
+            BIT_(_state.e, 1 << 6);
             break;
         case 0x74: // BIT 6,H
-            BIT(_state.h, 1 << 6);
+            BIT_(_state.h, 1 << 6);
             break;
         case 0x75: // BIT 6,L
-            BIT(_state.l, 1 << 6);
+            BIT_(_state.l, 1 << 6);
             break;
         case 0x76: // BIT 6,(HL)
-            BIT(Read(_regHL.GetWord()), 1 << 6);
+            BIT_(Read(_regHL.GetWord()), 1 << 6);
             break;
         case 0x77: // BIT 6,A
-            BIT(_state.a, 1 << 6);
+            BIT_(_state.a, 1 << 6);
             break;
         case 0x78: // BIT 7,B
-            BIT(_state.b, 1 << 7);
+            BIT_(_state.b, 1 << 7);
             break;
         case 0x79: // BIT 7,C
-            BIT(_state.c, 1 << 7);
+            BIT_(_state.c, 1 << 7);
             break;
         case 0x7A: // BIT 7,D
-            BIT(_state.d, 1 << 7);
+            BIT_(_state.d, 1 << 7);
             break;
         case 0x7B: // BIT 7,E
-            BIT(_state.e, 1 << 7);
+            BIT_(_state.e, 1 << 7);
             break;
         case 0x7C: // BIT 7,H
-            BIT(_state.h, 1 << 7);
+            BIT_(_state.h, 1 << 7);
             break;
         case 0x7D: // BIT 7,L
-            BIT(_state.l, 1 << 7);
+            BIT_(_state.l, 1 << 7);
             break;
         case 0x7E: // BIT 7,(HL)
-            BIT(Read(_regHL.GetWord()), 1 << 7);
+            BIT_(Read(_regHL.GetWord()), 1 << 7);
             break;
         case 0x7F: // BIT 7,A
-            BIT(_state.a, 1 << 7);
+            BIT_(_state.a, 1 << 7);
             break;
         case 0x80: // RES 0, B
             _state.b &= ~(1 << 0);

@@ -125,7 +125,7 @@ public:
     inline void ADD(Reg16 &reg, u16 val);
     inline void ADD_SP(s8 val);
     inline void AND(u8 val);
-    inline void BIT(u8 val, u8 bit);
+    inline void BIT_(u8 val, u8 bit);
     inline void CALL(u16 addr);
     inline void CALL(bool condition, u16 addr);
     inline void CP(u8 val);
