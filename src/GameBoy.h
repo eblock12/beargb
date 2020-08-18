@@ -130,7 +130,7 @@ private:
     u8 _readableRegMap[0x100] = {};
     u8 _writeableRegMap[0x100] = {};
 public:
-    GameBoy(GameBoyModel type, const std::string &romFile);
+    GameBoy(GameBoyModel type, char *romFile);
     ~GameBoy();
 
     u32 *GetPixelBuffer() { return _ppu->GetPixelBuffer(); }

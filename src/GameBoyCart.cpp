@@ -19,7 +19,7 @@ GameBoyCart::~GameBoyCart()
     }
 }
 
-GameBoyCart *GameBoyCart::CreateFromRomFile(const std::string &filePath, GameBoy *gameBoy)
+GameBoyCart *GameBoyCart::CreateFromRomFile(char *filePath, GameBoy *gameBoy)
 {
     std::ifstream romStream(filePath, std::ios::in | std::ios::binary);
     if (romStream.good())
@@ -74,8 +74,18 @@ GameBoyCart *GameBoyCart::CreateFromRomFile(const std::string &filePath, GameBoy
                 return new GameBoyCart(gameBoy, romData);
         }
     }
+    else
+    {
+        std::cout << "Failed to open rom file: " << filePath << std::endl;
+
+        // return a dummy cart
+        u8 *romData = new u8[0x8000];
+        memset(romData, 0, 0x8000);
+        return new GameBoyCart(gameBoy, romData);
+    }
 
     return nullptr;
+
 }
 
 void GameBoyCart::Reset()

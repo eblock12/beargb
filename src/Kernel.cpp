@@ -88,9 +88,10 @@ bool Kernel::Initialize(char *romFile)
 
     if (romFile == nullptr)
     {
-        romFile = "tetris.gb";
+        romFile = "/tetris.gb";
     }
 
+    romFile = "/tetris.gb";
     _gameBoy.reset(new GameBoy(GameBoyModel::GameBoy, romFile));
 
     return ok;
@@ -132,6 +133,8 @@ ShutdownMode Kernel::Run()
 #endif
 
     bool running = true;
+
+    running = false;
 
     while (running)
     {
@@ -181,7 +184,7 @@ ShutdownMode Kernel::Run()
         frameBuffer->WaitForVerticalSync();
 
         // clear frame buffer
-        memset((u32 *) (uintptr)frameBuffer->GetBuffer(), 0, frameBuffer->GetSize());
+        //memset((u32 *) (uintptr)frameBuffer->GetBuffer(), 0, frameBuffer->GetSize());
 #endif
 
         if (m_pressedDown)
@@ -211,10 +214,32 @@ ShutdownMode Kernel::Run()
 			unsigned nPosY = _posY + pos;
 
 #if !USE_SDL
-			_screen.SetPixel(nPosX, nPosY, NORMAL_COLOR);
-			_screen.SetPixel((_posX + size)-pos-1, nPosY, NORMAL_COLOR);
+			//_screen.SetPixel(nPosX, nPosY, NORMAL_COLOR);
+			//_screen.SetPixel((_posX + size)-pos-1, nPosY, NORMAL_COLOR);
 #endif
 		}
+
+#if !USE_SDL
+        int cx = 80;
+        int cy = 48;
+        for (int x = 0; x < 160; x++)
+        for (int y = 0; y < 144; y++)
+        {
+            u32 gbColor = gameBoyPixels[y * 160 + x];
+            u8 r = gbColor >> 24;
+            u8 g = gbColor >> 16;
+            u8 b = gbColor >> 8;
+
+            _screen.SetPixel(x + cx, y + cy, COLOR16(r >> 3, g >> 3, b >> 3));
+
+            //((u8*)_surface->pixels)[((y + cy) * _surface->w + x + cx) * 4 + 0] = gbColor >> 8;
+            //((u8*)_surface->pixels)[((y + cy) * _surface->w + x + cx) * 4 + 1] = gbColor >> 16;
+            //((u8*)_surface->pixels)[((y + cy) * _surface->w + x + cx) * 4 + 2] = gbColor >> 24;
+            //((u8*)_surface->pixels)[((y + cy) * _surface->w + x + cx) * 4 + 3] = 0; // alpha
+        }
+
+        frameBuffer->WaitForVerticalSync();
+#endif
     }
 
 #if USE_SDL
