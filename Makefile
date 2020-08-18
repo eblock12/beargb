@@ -36,7 +36,7 @@ clean:
 
 else # !USESDL
 
-	include $(CIRCLESTDLIBHOME)/Config.mk
+	-include $(CIRCLESTDLIBHOME)/Config.mk
 	include $(CIRCLEHOME)/Rules.mk
 
 	CFLAGS += -I "$(NEWLIBDIR)/include" -I $(STDDEF_INCPATH) -std=c++17 -O3 -DUSE_CIRCLE
@@ -54,4 +54,4 @@ else # !USESDL
 endif
 
 circle:
-	cd $(CIRCLEHOME) && ./configure && make
+	cd $(CIRCLESTDLIBHOME) && ./configure && make
