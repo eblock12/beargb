@@ -88,10 +88,10 @@ bool Kernel::Initialize(char *romFile)
 
     if (romFile == nullptr)
     {
-        romFile = "/tetris.gb";
+        romFile = "tetris.gb";
     }
 
-    romFile = "/tetris.gb";
+    //romFile = "/tetris.gb";
     _gameBoy.reset(new GameBoy(GameBoyModel::GameBoy, romFile));
 
     return ok;
@@ -133,8 +133,6 @@ ShutdownMode Kernel::Run()
 #endif
 
     bool running = true;
-
-    running = false;
 
     while (running)
     {
@@ -181,7 +179,7 @@ ShutdownMode Kernel::Run()
             }
         }
 #else
-        frameBuffer->WaitForVerticalSync();
+        //frameBuffer->WaitForVerticalSync();
 
         // clear frame buffer
         //memset((u32 *) (uintptr)frameBuffer->GetBuffer(), 0, frameBuffer->GetSize());

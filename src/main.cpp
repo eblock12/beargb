@@ -7,7 +7,7 @@
 #include <circle/startup.h>
 #endif
 
-int main(int argc, char *argv[])
+int main(int argc, const char *argv[])
 {
     char *romFile = nullptr;
     if (argc > 1)

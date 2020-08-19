@@ -4,7 +4,8 @@
             "name": "Mac",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/usr/local/include/SDL2"
+                "/usr/local/include/SDL2",
+                "${workspaceFolder}/ext/circle-stdlib"
             ],
             "defines": [
                 "USE_SDL=1"
