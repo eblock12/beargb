@@ -22,7 +22,7 @@ bool CircleKernel::Initialize()
         CGPIOPin(pin, GPIOModeAlternateFunction2);
     }
 
-    bool result = CStdlibApp::Initialize();
+    bool result = CStdlibAppStdio::Initialize();
 
     bool foundGamePad = false;
     for (unsigned deviceIdx = 1; 1; deviceIdx++)
