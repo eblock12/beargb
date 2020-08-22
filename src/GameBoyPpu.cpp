@@ -31,6 +31,8 @@ void GameBoyPpu::ExecuteCycle()
         {
             // currently drawing a visible scanline
 
+            // h-blank doesnt occur at a fixed cycle count
+            // time to finish rendering varies
             if (_pixelsRendered == 160)
             {
                 _state.lcdStatus &= ~0x03; // now H-Blank
@@ -70,14 +72,14 @@ void GameBoyPpu::ExecuteCycle()
         else
         {
             // currently in v-blank
-            switch (_state.tick)
+            switch (_state.tick) // cycle count within scanline
             {
                 case 4:
                     if (_state.scanline == 144)
                     {
                         _state.lcdStatus &= ~0x2;
                         _state.lcdStatus |= 0x1; // v-blank mode
-                        _windowOffset = -1;
+                        _windowOffset = 0;
                         _gameBoy->SetInterruptFlags(IrqFlag::VBlank);
                     }
                     break;
@@ -88,7 +90,7 @@ void GameBoyPpu::ExecuteCycle()
                         _state.ly = 0;
                     }
                     break;
-                case 456:
+                case 456: // end of v-blank line
                     _state.tick = 0;
                     _state.scanline++;
                     if (_state.scanline == 154)
@@ -137,10 +139,10 @@ void GameBoyPpu::TickBgFetcher()
     switch (_fetcherBg.tick++)
     {
         case 1: // fetch tile
-            if (_usingWindow)
+            if (_insideWindow)
             {
                 tileMapAddr = (_state.lcdControl & 0x40) ? 0x1C00 : 0x1800;
-                y = (u8)_windowOffset;
+                y = (u8)_windowOffset - 1;
             }
             else
             {
@@ -197,17 +199,23 @@ void GameBoyPpu::TickBgFetcher()
 void GameBoyPpu::TickDrawing()
 {
     // did drawing transition over the BG/window boundary?
-    bool insideWindow = (_state.lcdControl & 0x20) && (_pixelsRendered >= _state.windowX - 7) && (_state.scanline >= _state.windowY);
-    if (insideWindow != _usingWindow)
+    if (_windowEnable &&
+        !_insideWindow &&
+        (_pixelsRendered >= _windowStartX - 7) &&
+        (_state.scanline >= _windowStartY))
     {
-        //std::cout << std::dec << int(_pixelsRendered) << "x" << int(_state.scanline) << (insideWindow ? " entered window" : " exited window") << std::endl;
+        _insideWindow = true;
 
-        _usingWindow = insideWindow;
         _windowOffset++;
-        //std::cout << std::dec << int(_windowOffset) << std::endl;
+        
+        //std::cout << "X=" << std::dec << int(_pixelsRendered) << " Y=" << int(_state.scanline) << " winY=" << int(_windowOffset) << std::endl;
+
+        // reset fetch/fifo
         _bgColumn = 0;
         _fetcherBg.tick = 0;
         _fifoBg.Clear();
+
+        // bail out, nothing will happen on first cycle of transition
         return;
     }
 
@@ -289,7 +297,6 @@ u8 GameBoyPpu::ReadRegister(u16 addr)
 
 void GameBoyPpu::Reset()
 {
-    _usingWindow = false;
 }
 
 void GameBoyPpu::StartRender()
@@ -300,6 +307,12 @@ void GameBoyPpu::StartRender()
 
     _fetcherOam.tick = 0;
     _fetcherBg.tick = 0;
+
+    // latch window
+    _windowEnable = ((_state.lcdControl & 0x20) != 0);
+    _windowStartX = _state.windowX;
+    _windowStartY = _state.windowY;
+    _insideWindow = false;
 
     // rendering starts off screen from -8 to -16 pixels
     _pixelsRendered = -8 - (_state.scrollX & 0x07);

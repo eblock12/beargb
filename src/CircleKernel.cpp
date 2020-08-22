@@ -63,15 +63,15 @@ HostExitCode CircleKernel::RunApp(int argc, const char *argv[])
 {
     bool running = true;
 
-    _gameBoy.reset(new GameBoy(GameBoyModel::GameBoy, "tetris.gb", this));
+    _gameBoy.reset(new GameBoy(GameBoyModel::GameBoy, "zelda.gb", this));
 
     while (running)
     {
         _gameBoy->RunOneFrame();
         u32 *gameBoyPixels = _gameBoy->GetPixelBuffer();
 
-        int cx = 80;
-        int cy = 48;
+        int cx = mScreen.GetWidth() / 2 - 160 / 2;
+        int cy = mScreen.GetHeight() / 2 - 144 / 2;
         for (int x = 0; x < 160; x++)
         for (int y = 0; y < 144; y++)
         {

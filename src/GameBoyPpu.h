@@ -144,6 +144,12 @@ private:
     PpuFetcher _fetcherBg;
     PpuFetcher _fetcherOam;
 
+    bool _windowEnable;
+    bool _insideWindow;
+    u8 _windowStartX;
+    u8 _windowStartY;
+    u8 _windowOffset;
+
     bool _renderPaused;
     s16 _pixelsRendered;
     u8 _bgColumn;
@@ -155,8 +161,6 @@ private:
         0x40404000,
         0x00000000,
     };
-    bool _usingWindow;
-    s16 _windowOffset;
 
     inline void StartRender();
     void SetLcdPower(bool enable);
