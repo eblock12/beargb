@@ -58,7 +58,6 @@ void GameBoyCpu::RunOneInstruction()
             _gameBoy->ExecuteTwoCycles();
 
             // push current PC to stack
-            u16 preservePC = _state.pc;
             PushWord(_state.pc);
 
             // loading new PC consumes two more machine cycles

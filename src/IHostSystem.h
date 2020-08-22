@@ -8,6 +8,7 @@ enum class HostExitCode
 
 class IHostSystem
 {
+public:
     virtual bool Initialize() = 0;
-    virtual HostExitCode RunApp(int argc, const char *argv[]);
+    virtual HostExitCode RunApp(int argc, const char *argv[]) = 0;
 };

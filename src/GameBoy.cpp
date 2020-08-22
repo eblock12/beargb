@@ -1,7 +1,7 @@
 #include "GameBoy.h"
 #include <iostream>
 
-GameBoy::GameBoy(GameBoyModel model, char *romFile)
+GameBoy::GameBoy(GameBoyModel model, const char *romFile)
 {
     _model = model;
 

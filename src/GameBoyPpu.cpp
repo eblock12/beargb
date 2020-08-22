@@ -117,7 +117,7 @@ void GameBoyPpu::ExecuteCycle()
             }
         }
 
-        if ((preserveMode != _state.lcdStatus & 0x03) ||
+        if ((preserveMode != (_state.lcdStatus & 0x03)) ||
             (_state.lyCoincident != (_state.ly == _state.lyCompare)))
         {
             _state.lyCoincident = (_state.ly == _state.lyCompare);
@@ -426,6 +426,7 @@ u8 GameBoyPpu::ReadOamRam(u8 addr)
     else
     {
         std::cout << "Warning! Disallowed OAM read at addr " << std::hex << int(addr) << std::endl;
+        return 0xFF;
     }
 }
 

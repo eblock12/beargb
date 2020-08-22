@@ -1,4 +1,5 @@
 #include "CircleKernel.h"
+#include <circle/startup.h>
 
 CircleKernel::CircleKernel()
     : CStdlibAppStdio("BearGB")
@@ -45,5 +46,31 @@ HostExitCode CircleKernel::RunApp(int argc, const char *argv[])
 
             mScreen.SetPixel(x + cx, y + cy, COLOR16(r >> 3, g >> 3, b >> 3));
         }
+    }
+
+    return HostExitCode::Success;
+}
+
+int main(int argc, const char *argv[])
+{
+    CircleKernel kernel;
+
+    if (!kernel.Initialize())
+    {
+        halt();
+        return EXIT_HALT;
+    }
+
+    auto exitCode = kernel.RunApp(argc, argv);
+    switch (exitCode)
+    {
+        case HostExitCode::Failure:
+            reboot();
+            return EXIT_REBOOT;
+
+        case HostExitCode::Success:
+        default:
+            halt();
+            return EXIT_HALT;
     }
 }

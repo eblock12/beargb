@@ -19,7 +19,7 @@ GameBoyCart::~GameBoyCart()
     }
 }
 
-GameBoyCart *GameBoyCart::CreateFromRomFile(char *filePath, GameBoy *gameBoy)
+GameBoyCart *GameBoyCart::CreateFromRomFile(const char *filePath, GameBoy *gameBoy)
 {
     std::ifstream romStream(filePath, std::ios::in | std::ios::binary);
     if (romStream.good())

@@ -11,14 +11,13 @@ CIRCLEHOME = ext/circle-stdlib/libs/circle
 NEWLIBDIR = ext/circle-stdlib/install/$(NEWLIB_ARCH)
 
 OBJS = \
-	$(SRCDIR)/main.o \
-	$(SRCDIR)/Kernel.o \
 	$(SRCDIR)/GameBoy.o \
 	$(SRCDIR)/GameBoyCart.o \
 	$(SRCDIR)/GameBoyCpu.o \
 	$(SRCDIR)/GameBoyPpu.o
 
 ifdef USESDL
+	OBJS += $(SRCDIR)/SdlApp.o
 	CPP = g++
 	CPPFLAGS = -I$(SRCDIR) -O3 -DUSE_SDL -std=c++17 `sdl2-config --cflags`
 	NAME = beargb_sdl
@@ -35,11 +34,11 @@ clean:
 	rm -f $(OBJS)
 
 else # !USESDL
-
+	OBJS += $(SRCDIR)/CircleKernel.o
 	-include $(CIRCLESTDLIBHOME)/Config.mk
 	include $(CIRCLEHOME)/Rules.mk
 
-	CFLAGS += -I "$(NEWLIBDIR)/include" -I $(STDDEF_INCPATH) -std=c++17 -O3 -DUSE_CIRCLE
+	CFLAGS += -I "$(NEWLIBDIR)/include" -I "$(STDDEF_INCPATH)" -I "$(CIRCLESTDLIBHOME)/include" -std=c++17 -O3 -DUSE_CIRCLE
 
 	LIBS := "$(NEWLIBDIR)/lib/libm.a" "$(NEWLIBDIR)/lib/libc.a" "$(NEWLIBDIR)/lib/libcirclenewlib.a" \
 		$(CIRCLEHOME)/addon/SDCard/libsdcard.a \

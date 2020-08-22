@@ -156,7 +156,7 @@ public:
     static constexpr int HeaderOffset = 0x134;
 
     virtual ~GameBoyCart();
-    static GameBoyCart *CreateFromRomFile(char *filePath, GameBoy *gameBoy);
+    static GameBoyCart *CreateFromRomFile(const char *filePath, GameBoy *gameBoy);
     virtual void Reset();
     virtual u8 ReadRegister(u16 addr) { return 0; }
     virtual void WriteRegister(u16 addr, u8 val) {}
