@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include "shared.h"
+#include "IHostSystem.h"
 #include "GameBoyCart.h"
 #include "GameBoyCpu.h"
 #include "GameBoyPpu.h"
@@ -106,6 +107,8 @@ private:
 	static constexpr u32 OamRamSize = 0xA0;
 	static constexpr u32 HighRamSize = 0x7F;
 
+    IHostSystem *_host;
+
     GameBoyModel _model;
     GameBoyState _state = {};
 
@@ -130,7 +133,7 @@ private:
     u8 _readableRegMap[0x100] = {};
     u8 _writeableRegMap[0x100] = {};
 public:
-    GameBoy(GameBoyModel type, const char *romFile);
+    GameBoy(GameBoyModel type, const char *romFile, IHostSystem *host);
     ~GameBoy();
 
     u32 *GetPixelBuffer() { return _ppu->GetPixelBuffer(); }

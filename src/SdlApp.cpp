@@ -51,10 +51,42 @@ bool SdlApp::Initialize()
     return true;
 }
 
+bool SdlApp::IsButtonPressed(HostButton button)
+{
+    if (_keyboardState == nullptr)
+    {
+        return false;
+    }
+
+    switch (button)
+    {
+        case HostButton::Right:
+            return _keyboardState[SDL_SCANCODE_RIGHT];
+        case HostButton::Left:
+            return _keyboardState[SDL_SCANCODE_LEFT];
+        case HostButton::Up:
+            return _keyboardState[SDL_SCANCODE_UP];
+        case HostButton::Down:
+            return _keyboardState[SDL_SCANCODE_DOWN];
+        case HostButton::A:
+            return _keyboardState[SDL_SCANCODE_X];
+        case HostButton::B:
+            return _keyboardState[SDL_SCANCODE_Z];
+        case HostButton::Select:
+            return _keyboardState[SDL_SCANCODE_BACKSPACE];
+        case HostButton::Start:
+            return _keyboardState[SDL_SCANCODE_RETURN];
+        default:
+            return false;
+    }
+
+    return false;
+}
+
 HostExitCode SdlApp::RunApp(int argc, const char *argv[])
 {
     const char *romFile = (argc > 1) ? argv[1] : "tetris.gb";
-    _gameBoy.reset(new GameBoy(GameBoyModel::GameBoy, romFile));
+    _gameBoy.reset(new GameBoy(GameBoyModel::GameBoy, romFile, this));
 
     SDL_Event event;
     bool running = true;
@@ -92,6 +124,8 @@ HostExitCode SdlApp::RunApp(int argc, const char *argv[])
                     break;
             }
         }
+
+        _keyboardState = SDL_GetKeyboardState(nullptr);
     }
 
     return HostExitCode::Success;

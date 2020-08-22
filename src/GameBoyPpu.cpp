@@ -200,11 +200,11 @@ void GameBoyPpu::TickDrawing()
     bool insideWindow = (_state.lcdControl & 0x20) && (_pixelsRendered >= _state.windowX - 7) && (_state.scanline >= _state.windowY);
     if (insideWindow != _usingWindow)
     {
-        std::cout << std::dec << int(_pixelsRendered) << "x" << int(_state.scanline) << (insideWindow ? " entered window" : " exited window") << std::endl;
+        //std::cout << std::dec << int(_pixelsRendered) << "x" << int(_state.scanline) << (insideWindow ? " entered window" : " exited window") << std::endl;
 
         _usingWindow = insideWindow;
         _windowOffset++;
-        std::cout << std::dec << int(_windowOffset) << std::endl;
+        //std::cout << std::dec << int(_windowOffset) << std::endl;
         _bgColumn = 0;
         _fetcherBg.tick = 0;
         _fifoBg.Clear();
@@ -337,14 +337,6 @@ void GameBoyPpu::WriteRegister(u16 addr, u8 val)
                 // LCD power has been toggled
                 SetLcdPower((_state.lcdControl & 0x80) != 0);
             }
-            if (_state.lcdControl & 0x20)
-            {
-                std::cout << "WINDOW ENABLE" << std::endl;
-            }
-            else
-            {
-                std::cout << "WINDOW DISABLE" << std::endl;
-            }
             return;
         case 0xFF41: // STAT - LCD Status
             _state.lcdStatus = val & 0xF8; // lower 3 bits are read-only
@@ -375,11 +367,9 @@ void GameBoyPpu::WriteRegister(u16 addr, u8 val)
             return;
         case 0xFF4A: // WY
             _state.windowY = val;
-            std::cout << "WINDOW y=" << std::dec << int(val) << std::endl;
             return;
         case 0xFF4B: // WX
             _state.windowX = val;
-            std::cout << "WINDOW x=" << std::dec << int(val) << std::endl;
             return;
     }
 

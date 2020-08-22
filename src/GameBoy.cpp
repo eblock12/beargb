@@ -1,9 +1,10 @@
 #include "GameBoy.h"
 #include <iostream>
 
-GameBoy::GameBoy(GameBoyModel model, const char *romFile)
+GameBoy::GameBoy(GameBoyModel model, const char *romFile, IHostSystem *host)
 {
     _model = model;
+    _host = host;
 
     bool isCgb = (_model == GameBoyModel::GameBoyColor);
     _workRamSize = isCgb ? GameBoy::WorkRamSizeCgb : GameBoy::WorkRamSize;
@@ -352,6 +353,19 @@ u8 GameBoy::GetJoyPadState()
 {
     // TODO: Return actual button states
     u8 buttons = 0x0F;
+
+    if ((_state.joyPadInputSelect & 0x10) == 0) {
+        buttons &= ~(_host->IsButtonPressed(HostButton::Right) ? 0x01 : 0);
+        buttons &= ~(_host->IsButtonPressed(HostButton::Left) ? 0x02 : 0);
+        buttons &= ~(_host->IsButtonPressed(HostButton::Up) ? 0x04 : 0);
+        buttons &= ~(_host->IsButtonPressed(HostButton::Down) ? 0x08 : 0);
+    }
+    if ((_state.joyPadInputSelect & 0x20) == 0) {
+        buttons &= ~(_host->IsButtonPressed(HostButton::A) ? 0x01 : 0);
+        buttons &= ~(_host->IsButtonPressed(HostButton::B) ? 0x02 : 0);
+        buttons &= ~(_host->IsButtonPressed(HostButton::Select) ? 0x04 : 0);
+        buttons &= ~(_host->IsButtonPressed(HostButton::Start) ? 0x08 : 0);
+    }
 
     return buttons | (_state.joyPadInputSelect & 0x30) | 0xC0;
 }

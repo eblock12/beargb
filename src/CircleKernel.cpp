@@ -1,6 +1,8 @@
 #include "CircleKernel.h"
 #include <circle/startup.h>
 
+u8 CircleKernel::_buttonState = 0;
+
 CircleKernel::CircleKernel()
     : CStdlibAppStdio("BearGB")
 {
@@ -20,14 +22,48 @@ bool CircleKernel::Initialize()
         CGPIOPin(pin, GPIOModeAlternateFunction2);
     }
 
-    return CStdlibApp::Initialize();
+    bool result = CStdlibApp::Initialize();
+
+    bool foundGamePad = false;
+    for (unsigned deviceIdx = 1; 1; deviceIdx++)
+    {
+        CString deviceName;
+        deviceName.Format ("upad%u", deviceIdx);
+
+        CUSBGamePadDevice *gamePad =
+            (CUSBGamePadDevice *)mDeviceNameService.GetDevice(deviceName, false /*bBlockDevice*/);
+        if (gamePad == nullptr)
+        {
+            break;
+        }
+
+        const TGamePadState *pState = gamePad->GetInitialState();
+        assert (pState != 0);
+
+        gamePad->RegisterStatusHandler(GamePadStatusHandler);
+
+        foundGamePad = true;
+    }
+
+    if (!foundGamePad)
+    {
+        mLogger.Write(GetKernelName(), LogPanic, "Gamepad not found");
+        result = false;
+    }
+
+    return result;
+}
+
+bool CircleKernel::IsButtonPressed(HostButton button)
+{
+    return (_buttonState & button) != 0;
 }
 
 HostExitCode CircleKernel::RunApp(int argc, const char *argv[])
 {
     bool running = true;
 
-    _gameBoy.reset(new GameBoy(GameBoyModel::GameBoy, "tetris.gb"));
+    _gameBoy.reset(new GameBoy(GameBoyModel::GameBoy, "tetris.gb", this));
 
     while (running)
     {
@@ -49,6 +85,19 @@ HostExitCode CircleKernel::RunApp(int argc, const char *argv[])
     }
 
     return HostExitCode::Success;
+}
+
+void CircleKernel::GamePadStatusHandler(unsigned nDeviceIndex, const TGamePadState *pState)
+{
+    _buttonState = HostButton::None;
+    _buttonState |= (pState->buttons & GamePadButtonRight) != 0 ? HostButton::Right : HostButton::None;
+    _buttonState |= (pState->buttons & GamePadButtonLeft) != 0 ? HostButton::Left : HostButton::None;
+    _buttonState |= (pState->buttons & GamePadButtonUp) != 0 ? HostButton::Up : HostButton::None;
+    _buttonState |= (pState->buttons & GamePadButtonDown) != 0 ? HostButton::Down : HostButton::None;
+    _buttonState |= (pState->buttons & GamePadButtonA) != 0 ? HostButton::A : HostButton::None;
+    _buttonState |= (pState->buttons & GamePadButtonB) != 0 ? HostButton::B : HostButton::None;
+    _buttonState |= (pState->buttons & GamePadButtonSelect) != 0 ? HostButton::Select : HostButton::None;
+    _buttonState |= (pState->buttons & GamePadButtonStart) != 0 ? HostButton::Start : HostButton::None;
 }
 
 int main(int argc, const char *argv[])

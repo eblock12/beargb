@@ -13,10 +13,12 @@ private:
 
     SDL_Window *_window;
     SDL_Surface *_surface;
+    const u8 *_keyboardState;
 public:
     SdlApp();
     ~SdlApp();
 
     bool Initialize() override;
+    bool IsButtonPressed(HostButton button) override;
     HostExitCode RunApp(int argc, const char *argv[]) override;
 };
