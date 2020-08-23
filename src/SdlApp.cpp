@@ -7,10 +7,15 @@ const int SCREEN_HEIGHT = 240;
 SdlApp::SdlApp()
 {
     _window = nullptr;
+    _audioDevice = 0;
 }
 
 SdlApp::~SdlApp()
 {
+    if (_audioDevice > 0)
+    {
+        SDL_CloseAudioDevice(_audioDevice);
+    }
     if (_window != nullptr)
     {
         SDL_DestroyWindow(_window);
@@ -20,7 +25,7 @@ SdlApp::~SdlApp()
 
 bool SdlApp::Initialize()
 {
-    if (SDL_Init(SDL_INIT_VIDEO) < 0)
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0)
     {
         return false;
     }
@@ -47,6 +52,24 @@ bool SdlApp::Initialize()
     memset(_surface->pixels, 0, _surface->h * _surface->pitch);
     SDL_UnlockSurface(_surface);
     SDL_UpdateWindowSurface(_window);
+
+    SDL_AudioSpec requestedAudioSpec;
+    memset(&requestedAudioSpec, 0, sizeof(requestedAudioSpec));
+    requestedAudioSpec.freq = 48000;
+    requestedAudioSpec.format = AUDIO_U16MSB;
+    requestedAudioSpec.channels = 2;
+    requestedAudioSpec.samples = 4096;
+    requestedAudioSpec.callback = AudioCallback;
+
+    _audioDevice = SDL_OpenAudioDevice(nullptr, 0, &requestedAudioSpec, &_audioSpec, 0);
+    if (_audioDevice > 0)
+    {
+        SDL_PauseAudioDevice(_audioDevice, 0); // start playing
+    }
+    else
+    {
+        return false;
+    }
 
     return true;
 }
@@ -129,6 +152,21 @@ HostExitCode SdlApp::RunApp(int argc, const char *argv[])
     }
 
     return HostExitCode::Success;
+}
+
+void SdlApp::AudioCallback(void *data, u8 *stream, int len)
+{
+    int samples = len / 4;
+    for (int offset = 0; offset < samples; offset++)
+    {
+        u16 sample = 0;
+
+        // big endian
+        stream[offset * 4 + 0] = (sample >> 8);
+        stream[offset * 4 + 1] = sample;
+        stream[offset * 4 + 2] = (sample >> 8);
+        stream[offset * 4 + 3] = sample;
+    }
 }
 
 int main(int argc, const char *argv[])
