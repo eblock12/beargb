@@ -49,9 +49,10 @@ void GameBoyPpu::ExecuteCycle()
                 case 4:
                     _state.lcdStatus |= 0x2; // OAM search mode
                     _state.lcdStatus &= ~0x1;
+                    _spritesFound = 0;
                     break;
                 case 84:
-                    _state.lcdStatus |= 0x3; // Drawing mode
+                    _state.lcdStatus |= LcdModeFlag::Drawing; // Drawing mode
                     StartRender();
                     _renderPaused = true;
                     break;
@@ -107,16 +108,23 @@ void GameBoyPpu::ExecuteCycle()
             }
         }
 
-        if (((_state.lcdStatus & LcdModeFlag::Drawing) == LcdModeFlag::Drawing) && !_renderPaused)
+        if ((_state.lcdStatus & LcdModeFlag::Drawing) == LcdModeFlag::Drawing)
         {
-            // in drawing mode
-            TickDrawing();
+            if (!_renderPaused)
+            {
+                // in drawing mode
+                TickDrawing();
+            }
 
             if (_pixelsRendered == 160)
             {
                 // enter v-blank
                 _state.lcdStatus &= ~(0x03);
             }
+        }
+        else if ((_state.lcdStatus & LcdModeFlag::OamSearch) != 0)
+        {
+            TickOamSearch();
         }
 
         if ((preserveMode != (_state.lcdStatus & 0x03)) ||
@@ -176,9 +184,10 @@ void GameBoyPpu::TickBgFetcher()
 
                 for (int i = 0; i < 8; i++)
                 {
-                    _fifoBg.data[i] =
+                    _fifoBg.data[i].color =
                         ((_fetcherBg.tileData0 >> (7 - i)) & 0x01) |
                         (((_fetcherBg.tileData1 >> (7 - i)) & 0x01) << 1);
+                    // TODO: Fetch CGB tile attribute
                     //std::cout << std::hex << int(_fifoBg.data[i]) << ' ';
                 }
                // std::cout << std::endl;
@@ -219,7 +228,20 @@ void GameBoyPpu::TickDrawing()
         return;
     }
 
-    if (_fifoBg.length > 0)
+    if (_fetchNextSprite && (_state.lcdControl & 0x02))
+    {
+        MoveToNextSprite();
+    }
+    if (!_fetchNextSprite && _fetcherBg.tick > 4 && _fifoBg.length > 0)
+    {
+        TickOamFetcher();
+        if (_fetchNextSprite && (_state.lcdControl & 0x02))
+        {
+            MoveToNextSprite();
+        }
+    }
+
+    if (_fifoBg.length > 0 && _fetchNextSprite)
     {
         // have entered visible area?
         if (_pixelsRendered >= 0)
@@ -231,17 +253,158 @@ void GameBoyPpu::TickDrawing()
             }
             else
             {
-                u8 bgColorIndex = _fifoBg.data[_fifoBg.position];
-                u8 color = (_state.bgPal >> (bgColorIndex * 2)) & 0x03;
-                _pixelBuffer[bufferOffset] = _gbPal[color];
+                u8 bgColorIndex = _fifoBg.data[_fifoBg.position].color;
+                u8 spriteColorIndex = _fifoOam.data[_fifoOam.position].color;
+                u8 spriteAttributes = _fifoOam.data[_fifoOam.position].attributes;
+
+                // check if sprite or BG pixel has priority
+                // TODO: CGB has extra conditions like BG per-tile priority
+                if ((spriteColorIndex != 0) && // sprite pixel is opaque
+                    ((bgColorIndex == 0) || (spriteAttributes & 0x80) == 0x0)) // BG pixel is transparent OR sprite doesn't have priority
+                {
+                    // Sprite pixel has priority
+                    u8 palette = (spriteAttributes & 0x10) != 0 ? _state.objPal1 : _state.objPal0;
+                    u8 color = (palette >> (spriteColorIndex * 2)) & 0x03;
+                    _pixelBuffer[bufferOffset] = _gbPal[color];
+                }
+                else
+                {
+                    u8 color = (_state.bgPal >> (bgColorIndex * 2)) & 0x03;
+                    _pixelBuffer[bufferOffset] = _gbPal[color];
+                }
             }
         }
 
         _fifoBg.Pop();
+        if (_fifoOam.length > 0)
+        {
+            _fifoOam.Pop();
+        }
         _pixelsRendered++;
     }
 
     TickBgFetcher();
+}
+
+void GameBoyPpu::TickOamFetcher()
+{
+    s16 spriteY;
+    u8 spriteTileIndex;
+    u8 spriteAttribute;
+    u8 spriteRow;
+
+    switch (_fetcherOam.tick++)
+    {
+        case 1: // fetch sprite tile
+            spriteY = (s16)_oamRam[_fetchOamAddr] - 16;
+            spriteTileIndex = _oamRam[_fetchOamAddr + 2];
+            spriteAttribute = _oamRam[_fetchOamAddr + 3];
+
+            if (_state.lcdControl & 0x04)
+            {
+                // large sprites enabled (8x16)
+                spriteTileIndex &= 0xFE; // second half of sprite will use index+1
+                
+                if ((spriteAttribute & 0x40) != 0)
+                {
+                    // Y mirroring
+                    spriteRow = 15 - _state.scanline - spriteY;
+                }
+                else
+                {
+                    spriteRow = _state.scanline - spriteY;
+                }
+            }
+            else
+            {
+                // use normal sized sprites
+
+                if ((spriteAttribute & 0x40) != 0)
+                {
+                    // Y mirroring
+                    spriteRow = 7 - _state.scanline - spriteY;
+                }
+                else
+                {
+                    spriteRow = _state.scanline - spriteY;
+                }
+            }
+
+            // TODO: CGB supports alternate sprite tile set bank
+            _fetcherOam.tileSetAddr = (spriteTileIndex * 16) + (spriteRow * 2);
+            _fetcherOam.attributes = spriteAttribute;
+            break;
+        
+        case 3: // fetch first tile data byte
+            _fetcherOam.tileData0 = _oamRam[_fetcherOam.tileSetAddr];
+            break;
+
+        case 5: // fetch second tile data byte
+            _fetcherOam.tileData1 = _oamRam[_fetcherOam.tileSetAddr+1];
+            _fetchNextSprite = true;
+            _fetcherOam.tick = 0;
+
+            if ((_state.lcdControl & 0x02) != 0) // sprite render enable?
+            {
+                for (int i = 0; i < 8; i++) // fill pixel FIFO queue
+                {
+                    u8 x = (_fetcherOam.attributes & 0x20) != 0 ? i : (7 - i); // horizontal mirror
+                    _fifoOam.data[i].color =
+                        ((_fetcherOam.tileData0 >> x) & 0x01) |
+                        (((_fetcherOam.tileData1 >> x) & 0x01) << 1);
+                    _fifoOam.data[i].attributes = _fetcherOam.attributes;
+                }
+                _fifoOam.position = 0;
+                _fifoOam.length = 8;
+            }
+            break;
+    }
+}
+
+void GameBoyPpu::TickOamSearch()
+{
+    // not sure what happens on first and second cycle exactly, just run on second cycle
+    if ((_state.tick & 0x01) && // run every other tick
+        (_spritesFound < 10)) // stop searching at 10 sprites
+    {
+        // search begins at cycle 4 in scanline
+        // takes 2 cycles to evalulate each sprite
+        // each sprite has 4 bytes in OAM RAM
+        u8 oamAddr = ((_state.tick - 4) / 2) * 4;
+        s16 oamY = (s16)_oamRam[oamAddr] - 16;
+
+        //std::cout << "Oam search, addr=" << std::dec << int(oamAddr) << std::endl;
+        
+        // does sprite fall within this scanline? (sprite height may be 16 or 8)
+        if ((_state.scanline >= oamY) &&
+            (_state.scanline < oamY + ((_state.lcdControl & 0x04) ? 16 : 8)))
+        {
+            //std::cout << "found Sprite=" << int(_spritesFound) << " Y=" << int(oamY) << std::endl;
+
+            // store results for tile fetcher in drawing phase
+            _spriteX[_spritesFound] = _oamRam[oamAddr + 1];
+            _spriteAddr[_spritesFound] = oamAddr;
+            _spritesFound++;
+        }
+    }
+}
+
+void GameBoyPpu::MoveToNextSprite()
+{
+    // move to next search result from OAM search phase
+    for (int i = 0; i < _spritesFound; i++)
+    {
+        u8 spriteX = _spriteX[i];
+        if (_pixelsRendered == ((s16)spriteX - 8))
+        {
+            _fetchNextSprite = false;
+            _fetchOamAddr = _spriteAddr[i];
+            _spriteX[i] = 255; // remove from result
+            _fetcherOam.tick = 0; // start fetcher
+
+            break;
+        }
+    }
 }
 
 void GameBoyPpu::CheckLcdStatusIrq()
@@ -307,6 +470,8 @@ void GameBoyPpu::StartRender()
 
     _fetcherOam.tick = 0;
     _fetcherBg.tick = 0;
+
+    _fetchNextSprite = true;
 
     // latch window
     _windowEnable = ((_state.lcdControl & 0x20) != 0);
@@ -394,7 +559,7 @@ u8 GameBoyPpu::ReadVideoRam(u16 addr)
     if ((_state.lcdStatus & 0x03) == 0x03)
     {
         // VRAM is disallowed in mode 3
-        std::cout << "Warning! Disallowed VRAM read at addr " << std::hex << int(addr) << std::endl;
+        //std::cout << "Warning! Disallowed VRAM read at addr " << std::hex << int(addr) << std::endl;
         //return 0xFF;
         return _videoRam[addr & 0x1FFF];
     }
@@ -410,7 +575,7 @@ void GameBoyPpu::WriteVideoRam(u16 addr, u8 val)
     if ((_state.lcdStatus & 0x03) == 0x03)
     {
         // VRAM is disallowed in mode 3
-        std::cout << "Warning! Disallowed VRAM write at addr " << std::hex << int(addr) << std::endl;
+        //std::cout << "Warning! Disallowed VRAM write at addr " << std::hex << int(addr) << std::endl;
         _videoRam[addr & 0x1FFF] = val;
     }
     else

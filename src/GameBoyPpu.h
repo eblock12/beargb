@@ -94,12 +94,12 @@ namespace LcdModeFlag
 struct PixelFifoEntry
 {
     u8 color;
-    u8 attr;
+    u8 attributes;
 };
 
 struct PixelFifo
 {
-    u8 data[8] = {};
+    PixelFifoEntry data[8] = {};
     u8 length;
     u8 position;
 
@@ -116,7 +116,7 @@ struct PixelFifo
     void Pop()
     {
         length--;
-        data[position] = 0;
+        data[position] = {};
         position++;
         position = position & 7;
     }
@@ -127,6 +127,7 @@ struct PpuFetcher
     u8 tick;
     u8 tileData0;
     u8 tileData1;
+    u8 attributes;
     u16 tileSetAddr;
 };
 
@@ -150,6 +151,12 @@ private:
     u8 _windowStartY;
     u8 _windowOffset;
 
+    bool _fetchNextSprite;
+    u8 _fetchOamAddr;
+    u8 _spriteX[10];
+    u8 _spriteAddr[10];
+    u8 _spritesFound;
+
     bool _renderPaused;
     s16 _pixelsRendered;
     u8 _bgColumn;
@@ -166,6 +173,9 @@ private:
     void SetLcdPower(bool enable);
     inline void TickDrawing();
     inline void TickBgFetcher();
+    inline void TickOamSearch();
+    inline void TickOamFetcher();
+    inline void MoveToNextSprite();
     inline void CheckLcdStatusIrq();
 public:
     GameBoyPpu(GameBoy *gameBoy, u8 *videoRam, u8 *oamRam);
