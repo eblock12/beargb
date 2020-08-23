@@ -216,7 +216,7 @@ void GameBoyPpu::TickDrawing()
         _insideWindow = true;
 
         _windowOffset++;
-        
+
         //std::cout << "X=" << std::dec << int(_pixelsRendered) << " Y=" << int(_state.scanline) << " winY=" << int(_windowOffset) << std::endl;
 
         // reset fetch/fifo
@@ -303,8 +303,9 @@ void GameBoyPpu::TickOamFetcher()
             if (_state.lcdControl & 0x04)
             {
                 // large sprites enabled (8x16)
+
                 spriteTileIndex &= 0xFE; // second half of sprite will use index+1
-                
+
                 if ((spriteAttribute & 0x40) != 0)
                 {
                     // Y mirroring
@@ -334,13 +335,13 @@ void GameBoyPpu::TickOamFetcher()
             _fetcherOam.tileSetAddr = (spriteTileIndex * 16) + (spriteRow * 2);
             _fetcherOam.attributes = spriteAttribute;
             break;
-        
+
         case 3: // fetch first tile data byte
-            _fetcherOam.tileData0 = _oamRam[_fetcherOam.tileSetAddr];
+            _fetcherOam.tileData0 = _videoRam[_fetcherOam.tileSetAddr];
             break;
 
         case 5: // fetch second tile data byte
-            _fetcherOam.tileData1 = _oamRam[_fetcherOam.tileSetAddr+1];
+            _fetcherOam.tileData1 = _videoRam[_fetcherOam.tileSetAddr+1];
             _fetchNextSprite = true;
             _fetcherOam.tick = 0;
 
@@ -371,10 +372,11 @@ void GameBoyPpu::TickOamSearch()
         // takes 2 cycles to evalulate each sprite
         // each sprite has 4 bytes in OAM RAM
         u8 oamAddr = ((_state.tick - 4) / 2) * 4;
+
         s16 oamY = (s16)_oamRam[oamAddr] - 16;
 
         //std::cout << "Oam search, addr=" << std::dec << int(oamAddr) << std::endl;
-        
+
         // does sprite fall within this scanline? (sprite height may be 16 or 8)
         if ((_state.scanline >= oamY) &&
             (_state.scanline < oamY + ((_state.lcdControl & 0x04) ? 16 : 8)))
@@ -392,17 +394,19 @@ void GameBoyPpu::TickOamSearch()
 void GameBoyPpu::MoveToNextSprite()
 {
     // move to next search result from OAM search phase
-    for (int i = 0; i < _spritesFound; i++)
-    {
-        u8 spriteX = _spriteX[i];
-        if (_pixelsRendered == ((s16)spriteX - 8))
+    if (_fetchNextSprite && (_state.lcdControl & 0x02))
         {
-            _fetchNextSprite = false;
-            _fetchOamAddr = _spriteAddr[i];
-            _spriteX[i] = 255; // remove from result
-            _fetcherOam.tick = 0; // start fetcher
+        for (int i = 0; i < _spritesFound; i++)
+        {
+            if (_pixelsRendered == ((s16)_spriteX[i] - 8))
+            {
+                _fetchNextSprite = false;
+                _fetchOamAddr = _spriteAddr[i];
+                _spriteX[i] = 255; // remove from result
+                _fetcherOam.tick = 0; // start fetcher
 
-            break;
+                break;
+            }
         }
     }
 }

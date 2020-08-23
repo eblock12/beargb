@@ -70,8 +70,9 @@ HostExitCode CircleKernel::RunApp(int argc, const char *argv[])
         _gameBoy->RunOneFrame();
         u32 *gameBoyPixels = _gameBoy->GetPixelBuffer();
 
-        int cx = mScreen.GetWidth() / 2 - 160 / 2;
-        int cy = mScreen.GetHeight() / 2 - 144 / 2;
+        int cx = mScreen.GetWidth() > 160 ? mScreen.GetWidth() / 2 - 160 / 2 : 0;
+        int cy =  mScreen.GetHeight() > 144 ? mScreen.GetHeight() / 2 - 144 / 2 : 0;
+
         for (int x = 0; x < 160; x++)
         for (int y = 0; y < 144; y++)
         {
