@@ -55,11 +55,11 @@ bool SdlApp::Initialize()
 
     SDL_AudioSpec requestedAudioSpec;
     memset(&requestedAudioSpec, 0, sizeof(requestedAudioSpec));
-    requestedAudioSpec.freq = 48000;
-    requestedAudioSpec.format = AUDIO_U16MSB;
+    requestedAudioSpec.freq = 44100;
+    requestedAudioSpec.format = AUDIO_S16MSB;
     requestedAudioSpec.channels = 2;
     requestedAudioSpec.samples = 4096;
-    requestedAudioSpec.callback = AudioCallback;
+    requestedAudioSpec.callback = nullptr;
 
     _audioDevice = SDL_OpenAudioDevice(nullptr, 0, &requestedAudioSpec, &_audioSpec, 0);
     if (_audioDevice > 0)

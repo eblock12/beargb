@@ -14,7 +14,9 @@ OBJS = \
 	$(SRCDIR)/GameBoy.o \
 	$(SRCDIR)/GameBoyCart.o \
 	$(SRCDIR)/GameBoyCpu.o \
-	$(SRCDIR)/GameBoyPpu.o
+	$(SRCDIR)/GameBoyPpu.o \
+	$(SRCDIR)/GameBoyApu.o \
+	$(SRCDIR)/GameBoySquareChannel.o
 
 ifdef USESDL
 	OBJS += $(SRCDIR)/SdlApp.o

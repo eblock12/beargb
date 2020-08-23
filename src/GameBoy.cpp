@@ -18,6 +18,7 @@ GameBoy::GameBoy(GameBoyModel model, const char *romFile, IHostSystem *host)
     _cart.reset(GameBoyCart::CreateFromRomFile(romFile, this));
     _cpu.reset(new GameBoyCpu(this));
     _ppu.reset(new GameBoyPpu(this, _videoRam, _oamRam));
+    _apu.reset(new GameBoyApu(this));
 
     Reset();
 }
@@ -34,6 +35,7 @@ void GameBoy::ExecuteTwoCycles()
 {
     _state.cycleCount += 2;
 
+    _apu->AddCycles(2);
     ExecuteTimer();
     _ppu->ExecuteCycle();
     if ((_state.cycleCount & 0x3) == 0) // run DMA on 4 cycle intervals

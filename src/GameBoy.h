@@ -7,6 +7,7 @@
 #include "GameBoyCart.h"
 #include "GameBoyCpu.h"
 #include "GameBoyPpu.h"
+#include "GameBoyApu.h"
 
 enum class GameBoyModel
 {
@@ -115,6 +116,7 @@ private:
     std::unique_ptr<GameBoyCart> _cart;
     std::unique_ptr<GameBoyCpu> _cpu;
     std::unique_ptr<GameBoyPpu> _ppu;
+    std::unique_ptr<GameBoyApu> _apu;
 
     // internal RAM
     u8 *_workRam = nullptr;

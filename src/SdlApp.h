@@ -16,9 +16,6 @@ private:
     const u8 *_keyboardState;
 
     SDL_AudioSpec _audioSpec;
-    int _audioDevice;
-
-    static void AudioCallback(void *data, u8 *stream, int len);
 public:
     SdlApp();
     ~SdlApp();
