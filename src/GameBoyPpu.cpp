@@ -232,7 +232,7 @@ void GameBoyPpu::TickDrawing()
     {
         MoveToNextSprite();
     }
-    if (!_fetchNextSprite && _fetcherBg.tick > 4 && _fifoBg.length > 0)
+    if (!_fetchNextSprite)
     {
         TickOamFetcher();
         if (_fetchNextSprite && (_state.lcdControl & 0x02))
@@ -309,7 +309,7 @@ void GameBoyPpu::TickOamFetcher()
                 if ((spriteAttribute & 0x40) != 0)
                 {
                     // Y mirroring
-                    spriteRow = 15 - _state.scanline - spriteY;
+                    spriteRow = 15 - (_state.scanline - spriteY);
                 }
                 else
                 {
@@ -323,7 +323,7 @@ void GameBoyPpu::TickOamFetcher()
                 if ((spriteAttribute & 0x40) != 0)
                 {
                     // Y mirroring
-                    spriteRow = 7 - _state.scanline - spriteY;
+                    spriteRow = 7 - (_state.scanline - spriteY);
                 }
                 else
                 {

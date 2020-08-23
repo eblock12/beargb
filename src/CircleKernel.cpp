@@ -63,7 +63,7 @@ HostExitCode CircleKernel::RunApp(int argc, const char *argv[])
 {
     bool running = true;
 
-    _gameBoy.reset(new GameBoy(GameBoyModel::GameBoy, "tetris.gb", this));
+    _gameBoy.reset(new GameBoy(GameBoyModel::GameBoy, "zelda.gb", this));
 
     while (running)
     {
