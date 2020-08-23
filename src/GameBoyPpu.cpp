@@ -347,15 +347,18 @@ void GameBoyPpu::TickOamFetcher()
 
             if ((_state.lcdControl & 0x02) != 0) // sprite render enable?
             {
-                for (int i = 0; i < 8; i++) // fill pixel FIFO queue
+                for (int i = 0, j = _fifoOam.position; i < 8; i++, j = (j + 1) & 7) // fill pixel FIFO queue
                 {
                     u8 x = (_fetcherOam.attributes & 0x20) != 0 ? i : (7 - i); // horizontal mirror
-                    _fifoOam.data[i].color =
+                    u8 color =
                         ((_fetcherOam.tileData0 >> x) & 0x01) |
                         (((_fetcherOam.tileData1 >> x) & 0x01) << 1);
-                    _fifoOam.data[i].attributes = _fetcherOam.attributes;
+                    if ((_fifoOam.data[j].color == 0) && color)
+                    {
+                        _fifoOam.data[j].color = color;
+                        _fifoOam.data[j].attributes = _fetcherOam.attributes;
+                    }
                 }
-                _fifoOam.position = 0;
                 _fifoOam.length = 8;
             }
             break;
