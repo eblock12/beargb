@@ -1,5 +1,7 @@
 #include "SdlApp.h"
 
+#include <iostream>
+
 // GPI internal screen res
 const int SCREEN_WIDTH = 320;
 const int SCREEN_HEIGHT = 240;
@@ -56,8 +58,8 @@ bool SdlApp::Initialize()
     SDL_AudioSpec requestedAudioSpec;
     memset(&requestedAudioSpec, 0, sizeof(requestedAudioSpec));
     requestedAudioSpec.freq = 44100;
-    requestedAudioSpec.format = AUDIO_S16MSB;
-    requestedAudioSpec.channels = 2;
+    requestedAudioSpec.format = AUDIO_S16LSB;
+    requestedAudioSpec.channels = 1;
     requestedAudioSpec.samples = 4096;
     requestedAudioSpec.callback = nullptr;
 
@@ -65,6 +67,7 @@ bool SdlApp::Initialize()
     if (_audioDevice > 0)
     {
         SDL_PauseAudioDevice(_audioDevice, 0); // start playing
+        std::cout << "Started playing" << std::endl;
     }
     else
     {
@@ -106,6 +109,75 @@ bool SdlApp::IsButtonPressed(HostButton button)
     return false;
 }
 
+#include <tuple>
+
+
+constexpr double A3 = 110.00;
+constexpr double B3 = 123.4708;
+constexpr double C3 = 130.8128;
+constexpr double D3 = 146.8324;
+constexpr double E3 = 164.8138;
+constexpr double F3 = 174.6141;
+constexpr double G3 = 195.9977;
+constexpr double A4 = A3 * 2;
+constexpr double B4 = B3 * 2;
+constexpr double C4 = C3 * 2;
+constexpr double D4 = D3 * 2;
+constexpr double E4 = E3 * 2;
+constexpr double F4 = F4 * 2;
+constexpr double G4 = G4 * 2;
+constexpr double A5 = A4 * 2;
+constexpr double B5 = B4 * 2;
+
+constexpr double QuarterNote = 0.12;
+constexpr double HalfNote = QuarterNote * 2.0;
+constexpr double WholeNote = HalfNote * 2.0;
+
+constexpr double NoteCutOffPeriod = QuarterNote;
+
+std::pair<double, double> song[] =
+{
+    { A4, QuarterNote },
+    { B4, QuarterNote },
+    { C4, QuarterNote },
+    { C4, QuarterNote },
+    { D4, QuarterNote },
+    { C4, QuarterNote },
+    { B4, QuarterNote },
+    { 0, QuarterNote },
+
+    { E3, QuarterNote },
+    { G3, QuarterNote },
+    { A4, QuarterNote },
+    { A4, QuarterNote },
+    { G3, QuarterNote },
+    { F3, QuarterNote },
+    { G3, QuarterNote },
+
+    { 0, WholeNote },
+    { 0, WholeNote },
+
+    { C4, HalfNote },
+    { A4, QuarterNote },
+    { F3, HalfNote },
+    { C3, QuarterNote },
+    { C3, QuarterNote },
+    { C3, QuarterNote },
+    
+    { D3, QuarterNote },
+    { F3, QuarterNote },
+    { A4, QuarterNote },
+    { D4, QuarterNote },
+    { C4, WholeNote },
+
+    { 0, INFINITY },
+};
+
+int songPosition = 0;
+double noteFrequency = 0.0;
+double noteSecondsLeft = 0.0;
+double amp = 0.0;
+
 HostExitCode SdlApp::RunApp(int argc, const char *argv[])
 {
     const char *romFile = (argc > 1) ? argv[1] : "tetris.gb";
@@ -113,6 +185,13 @@ HostExitCode SdlApp::RunApp(int argc, const char *argv[])
 
     SDL_Event event;
     bool running = true;
+
+    s16 outputBuffer[1024] = {};
+    u32 bufferPosition = 0;
+
+    double sinePhase = 0.0;
+
+    u32 lastTicks = SDL_GetTicks();
 
     while (running)
     {
@@ -149,6 +228,60 @@ HostExitCode SdlApp::RunApp(int argc, const char *argv[])
         }
 
         _keyboardState = SDL_GetKeyboardState(nullptr);
+
+        u32 currentTicks = SDL_GetTicks();
+        u32 ticksElapsed = currentTicks - lastTicks;
+        lastTicks = currentTicks;
+        double secondsElapsed = (double)ticksElapsed / 1000.0;
+        double vibrato = 0.0;
+
+        if (noteSecondsLeft < -NoteCutOffPeriod)
+        {
+            std::cout << "Note #" << int(songPosition);
+            auto note = song[songPosition++];
+            noteFrequency = note.first;
+            noteSecondsLeft = note.second;
+            //sinePhase = 0;
+            std::cout << ": Freq=" << noteFrequency << " Length=" << noteSecondsLeft << std::endl;
+        }
+
+        //noteSecondsLeft -= secondsElapsed;
+
+        if (SDL_GetQueuedAudioSize(_audioDevice) < (4096 * sizeof(s16)))
+        {
+            for (int i = 0; i < 1024; i++)
+            {
+                // note decay
+                if (noteSecondsLeft < 0)
+                {
+                    amp -= (1.0 / 44100.0) * 10;
+                    //std::cout << amp << std::endl;
+
+                    if (amp < 0.0)
+                    {
+                        amp = 0.0;
+                    }
+                }
+                else // note attack
+                {
+                    amp += (1.0 / 44100.0) * 10;
+                    if (amp > 1.0)
+                    {
+                        amp = 1.0;
+                    }
+                }
+
+                s16 sample = (s16)(sin(sinePhase * 2 * M_PI) * 16000.0 * amp);
+                sample += (s16)(sin(sinePhase * 2.0) / 2.0 * 16000.0 * amp);
+                //sample += (s16)(sin(sinePhase * 4.0 + 0.2) * 10000.0 * amp);
+
+                SDL_QueueAudio(_audioDevice, &sample, sizeof(sample));
+                sinePhase += ((noteFrequency + 0) * 4) / 44100.0;
+                vibrato = sin(sinePhase / 50.0 * 2 * M_PI) * 2.0;
+
+                noteSecondsLeft -= 1.0 / 44100.0;
+            }
+        }
     }
 
     return HostExitCode::Success;
