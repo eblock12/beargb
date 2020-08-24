@@ -1,5 +1,6 @@
 #include "CircleKernel.h"
 #include <circle/startup.h>
+#include <circle/cputhrottle.h>
 
 u8 CircleKernel::_buttonState = 0;
 
@@ -10,6 +11,8 @@ CircleKernel::CircleKernel()
 
 bool CircleKernel::Initialize()
 {
+    CCPUThrottle::Get()->SetSpeed(CPUSpeedMaximum);
+
     // Note: Skipping pins 0x12 and 0x13 for audio usage
     unsigned dpi24pins[] =
     {
@@ -63,15 +66,21 @@ HostExitCode CircleKernel::RunApp(int argc, const char *argv[])
 {
     bool running = true;
 
-    _gameBoy.reset(new GameBoy(GameBoyModel::GameBoy, "zelda.gb", this));
+    _gameBoy.reset(new GameBoy(GameBoyModel::GameBoy, "dkl.gb", this));
+
+    CBcmFrameBuffer *frameBuffer = mScreen.GetFrameBuffer();
+    TScreenColor *frameBufferBuffer = (TScreenColor *)(uintptr)frameBuffer->GetBuffer();
+    u32 pitch = frameBuffer->GetPitch() / sizeof(TScreenColor);
+    u32 width = frameBuffer->GetWidth();
+    u32 height = frameBuffer->GetHeight();
 
     while (running)
     {
         _gameBoy->RunOneFrame();
         u32 *gameBoyPixels = _gameBoy->GetPixelBuffer();
 
-        int cx = mScreen.GetWidth() > 160 ? mScreen.GetWidth() / 2 - 160 / 2 : 0;
-        int cy =  mScreen.GetHeight() > 144 ? mScreen.GetHeight() / 2 - 144 / 2 : 0;
+        int cx = width > 160 ? width / 2 - 160 / 2 : 0;
+        int cy = height > 144 ? height / 2 - 144 / 2 : 0;
 
         for (int x = 0; x < 160; x++)
         for (int y = 0; y < 144; y++)
@@ -81,7 +90,7 @@ HostExitCode CircleKernel::RunApp(int argc, const char *argv[])
             u8 g = gbColor >> 16;
             u8 b = gbColor >> 8;
 
-            mScreen.SetPixel(x + cx, y + cy, COLOR16(r >> 3, g >> 3, b >> 3));
+            frameBufferBuffer[(x + cx) + ((y + cy) * pitch)] = COLOR16(r >> 3, g >> 3, b >> 3);
         }
     }
 
@@ -96,7 +105,7 @@ void CircleKernel::GamePadStatusHandler(unsigned nDeviceIndex, const TGamePadSta
     _buttonState |= (pState->buttons & GamePadButtonUp) != 0 ? HostButton::Up : HostButton::None;
     _buttonState |= (pState->buttons & GamePadButtonDown) != 0 ? HostButton::Down : HostButton::None;
     _buttonState |= (pState->buttons & GamePadButtonA) != 0 ? HostButton::A : HostButton::None;
-    _buttonState |= (pState->buttons & GamePadButtonB) != 0 ? HostButton::B : HostButton::None;
+    _buttonState |= ((pState->buttons & GamePadButtonB) != 0) || ((pState->buttons & GamePadButtonX) != 0) ? HostButton::B : HostButton::None;
     _buttonState |= (pState->buttons & GamePadButtonSelect) != 0 ? HostButton::Select : HostButton::None;
     _buttonState |= (pState->buttons & GamePadButtonStart) != 0 ? HostButton::Start : HostButton::None;
 }
