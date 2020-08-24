@@ -1,3 +1,5 @@
+#pragma once
+
 #include "shared.h"
 #include "GameBoySquareChannel.h"
 #include <memory>

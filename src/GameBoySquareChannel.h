@@ -1,3 +1,5 @@
+#pragma once
+
 class GameBoyApu;
 
 #include "shared.h"
@@ -5,6 +7,21 @@ class GameBoyApu;
 struct SquareChannelState
 {
     bool enabled;
+
+    // Sweep Shift Number
+    u8 sweepShift;
+
+    // Sweep Increase/Decrease true = Subtraction, false = Addition
+    bool sweepDecrease;
+
+    // Sweep Time
+    u8 sweepTime;
+
+    // Sound length x (1/256) sec
+    u8 length;
+
+    // Waveform duty cycle
+    u8 dutyCycles;
 };
 
 class GameBoySquareChannel

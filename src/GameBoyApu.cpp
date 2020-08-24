@@ -41,7 +41,7 @@ void GameBoyApu::Execute()
         _sampleBuffer[_bufferPosition++] = leftSample;
         _sampleBuffer[_bufferPosition++] = rightSample;
 
-        if (_bufferPosition > 0)
+        if (_bufferPosition >= 0)
         {
             std::cout << "WARNING: Overflow in internal sample buffer!" << std::endl;
             _bufferPosition = 0;

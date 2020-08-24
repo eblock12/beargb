@@ -16,6 +16,7 @@ private:
     const u8 *_keyboardState;
 
     SDL_AudioSpec _audioSpec;
+    SDL_AudioDeviceID _audioDevice;
 public:
     SdlApp();
     ~SdlApp();

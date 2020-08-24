@@ -132,8 +132,7 @@ u8 GameBoy::ReadRegister(u16 addr)
             case 0xFF37: case 0xFF38: case 0xFF39: case 0xFF3A:
             case 0xFF3B: case 0xFF3C: case 0xFF3D: case 0xFF3E:
             case 0xFF3F:
-                //std::cout << "Warning! Unsupported APU read: " << std::hex << int(addr) << std::endl;
-                return 0xFF;
+                return _apu->ReadRegister(addr);
             case 0xFF40: case 0xFF41: case 0xFF42: case 0xFF43:
             case 0xFF44: case 0xFF45: case 0xFF47: case 0xFF48:
             case 0xFF49: case 0xFF4A: case 0xFF4B:
@@ -269,7 +268,7 @@ void GameBoy::WriteRegister(u16 addr, u8 val)
             case 0xFF37: case 0xFF38: case 0xFF39: case 0xFF3A:
             case 0xFF3B: case 0xFF3C: case 0xFF3D: case 0xFF3E:
             case 0xFF3F:
-                //std::cout << "Warning! Unsupported APU write: " << std::hex << int(addr) << std::endl;
+                _apu->WriteRegister(addr, val);
                 return;
             case 0xFF40: case 0xFF41: case 0xFF42: case 0xFF43:
             case 0xFF45: case 0xFF47: case 0xFF48: case 0xFF49:

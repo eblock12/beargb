@@ -154,21 +154,6 @@ HostExitCode SdlApp::RunApp(int argc, const char *argv[])
     return HostExitCode::Success;
 }
 
-void SdlApp::AudioCallback(void *data, u8 *stream, int len)
-{
-    int samples = len / 4;
-    for (int offset = 0; offset < samples; offset++)
-    {
-        u16 sample = 0;
-
-        // big endian
-        stream[offset * 4 + 0] = (sample >> 8);
-        stream[offset * 4 + 1] = sample;
-        stream[offset * 4 + 2] = (sample >> 8);
-        stream[offset * 4 + 3] = sample;
-    }
-}
-
 int main(int argc, const char *argv[])
 {
     SdlApp app;
