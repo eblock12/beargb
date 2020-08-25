@@ -18,7 +18,7 @@ GameBoy::GameBoy(GameBoyModel model, const char *romFile, IHostSystem *host)
     _cart.reset(GameBoyCart::CreateFromRomFile(romFile, this));
     _cpu.reset(new GameBoyCpu(this));
     _ppu.reset(new GameBoyPpu(this, _videoRam, _oamRam));
-    _apu.reset(new GameBoyApu(this));
+    _apu.reset(new GameBoyApu(this, host));
 
     Reset();
 }
@@ -74,7 +74,9 @@ void GameBoy::RunCycles(u32 cycles)
 void GameBoy::RunOneFrame()
 {
     // 154 scanlines per frame, 456 clocks per scanline
-    RunCycles(154 * 456);
+    RunCycles(154 * 456 / 2);
+
+    _apu->Execute();
 }
 
 u8 GameBoy::Read(u16 addr)
@@ -445,6 +447,12 @@ void GameBoy::ExecuteTimer()
             _state.timerResetPending = true;
         }
     }
+
+    // TODO: Adjust timings for CGB?
+	if (((newDivider & 0x1000) == 0) && 
+        ((_state.divider & 0x1000) != 0)) {
+		_apu->TimerTick();
+	}
 
     _state.divider = newDivider;
 }

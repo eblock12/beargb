@@ -24,4 +24,6 @@ public:
     bool Initialize() override;
     bool IsButtonPressed(HostButton button) override;
     HostExitCode RunApp(int argc, const char *argv[]) override;
+    void QueueAudio(s16 *buffer, u32 sampleCount) override;
+    void SyncAudio() override;
 };

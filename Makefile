@@ -5,12 +5,14 @@
 # Define this to build for SDL, otherwise build for circle
 #USESDL = 1
 
+EXTDIR = ext
 SRCDIR = src
-CIRCLESTDLIBHOME = ext/circle-stdlib
-CIRCLEHOME = ext/circle-stdlib/libs/circle
-NEWLIBDIR = ext/circle-stdlib/install/$(NEWLIB_ARCH)
+CIRCLESTDLIBHOME = $(EXTDIR)/circle-stdlib
+CIRCLEHOME = $(EXTDIR)/circle-stdlib/libs/circle
+NEWLIBDIR = $(EXTDIR)/circle-stdlib/install/$(NEWLIB_ARCH)
 
 OBJS = \
+	$(EXTDIR)/Blip_Buffer.o \
 	$(SRCDIR)/GameBoy.o \
 	$(SRCDIR)/GameBoyCart.o \
 	$(SRCDIR)/GameBoyCpu.o \
@@ -18,10 +20,11 @@ OBJS = \
 	$(SRCDIR)/GameBoyApu.o \
 	$(SRCDIR)/GameBoySquareChannel.o
 
+
 ifdef USESDL
 	OBJS += $(SRCDIR)/SdlApp.o
 	CPP = g++
-	CPPFLAGS = -I$(SRCDIR) -O3 -DUSE_SDL -std=c++17 `sdl2-config --cflags`
+	CPPFLAGS = -I$(SRCDIR) -I$(EXTDIR) -O3 -DUSE_SDL -std=c++17 `sdl2-config --cflags`
 	NAME = beargb_sdl
 
 $(NAME): $(OBJS)
@@ -40,7 +43,7 @@ else # !USESDL
 	-include $(CIRCLESTDLIBHOME)/Config.mk
 	include $(CIRCLEHOME)/Rules.mk
 
-	CFLAGS += -I "$(NEWLIBDIR)/include" -I "$(STDDEF_INCPATH)" -I "$(CIRCLESTDLIBHOME)/include" -std=c++17 -O3 -DUSE_CIRCLE
+	CFLAGS += -I "$(NEWLIBDIR)/include" -I "$(STDDEF_INCPATH)" -I "$(CIRCLESTDLIBHOME)/include" -I$(EXTDIR) -std=c++17 -O3 -DUSE_CIRCLE
 
 	LIBS := "$(NEWLIBDIR)/lib/libm.a" "$(NEWLIBDIR)/lib/libc.a" "$(NEWLIBDIR)/lib/libcirclenewlib.a" \
 		$(CIRCLEHOME)/addon/SDCard/libsdcard.a \

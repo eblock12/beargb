@@ -4,9 +4,10 @@
 #include <iostream>
 #include <memory.h>
 
-GameBoyApu::GameBoyApu(GameBoy *gameBoy)
+GameBoyApu::GameBoyApu(GameBoy *gameBoy, IHostSystem *host)
 {
     _gameBoy = gameBoy;
+    _host = host;
 
     _square0.reset(new GameBoySquareChannel(this));
     _square1.reset(new GameBoySquareChannel(this));
@@ -14,9 +15,28 @@ GameBoyApu::GameBoyApu(GameBoy *gameBoy)
     _cycleCount = 0;
     _pendingCycles = 0;
 
-    _sampleBuffer = new s16[OutputBufferSampleSize * 2];
-    memset(_sampleBuffer, 0, OutputBufferSampleSize * 2 * sizeof(s16));
-    _bufferPosition = 0;
+    _sampleBuffer = new blip_sample_t[OutputBufferSampleSize * 2];
+    memset(_sampleBuffer, 0, sizeof(blip_sample_t) * OutputBufferSampleSize * 2);
+
+    _lastLeftSample = 0;
+    _lastRightSample = 0;
+
+    u32 sampleRate = 44100;  // TODO: Get from host
+    u32 clockRate = 4194304;
+
+    // setup Blip Buffers
+    _bufLeft.sample_rate(sampleRate);
+    _bufLeft.clock_rate(clockRate);
+    _bufLeft.clear();
+    _bufRight.sample_rate(sampleRate);
+    _bufRight.clock_rate(clockRate);
+    _bufRight.clear();
+
+    // setup Blip synths
+    _synthLeft.output(&_bufLeft);
+    _synthLeft.volume(0.5);
+    _synthRight.output(&_bufRight);
+    _synthRight.volume(0.5);
 }
 
 GameBoyApu::~GameBoyApu()
@@ -24,28 +44,103 @@ GameBoyApu::~GameBoyApu()
     delete[] _sampleBuffer;
 }
 
+s16 maxSample = 0;
+
 void GameBoyApu::Execute()
 {
-    while (_pendingCycles > 0)
+    if ((_state.channelEnable & 0x80) == 0x00)
     {
-        u32 step = 1;
-
-        _pendingCycles -= step;
-        _cycleCount += step;
-
-        _square0->Execute(step);
-        _square1->Execute(step);
-
-        s16 leftSample = 0, rightSample = 0;
-
-        _sampleBuffer[_bufferPosition++] = leftSample;
-        _sampleBuffer[_bufferPosition++] = rightSample;
-
-        if (_bufferPosition >= 0)
+        // apu is disabled, just eat cycles
+        _cycleCount += _pendingCycles;
+        _pendingCycles = 0;
+    }
+    else
+    {
+        while (_pendingCycles > 0)
         {
-            std::cout << "WARNING: Overflow in internal sample buffer!" << std::endl;
-            _bufferPosition = 0;
+            u32 step = std::min({
+                _pendingCycles,
+                (u32)_square0->GetTimer(),
+                (u32)_square1->GetTimer()
+            });
+
+            _pendingCycles -= step;
+
+            _square0->Execute(step);
+            _square1->Execute(step);
+
+            s16 leftSample = 0, rightSample = 0;
+
+            leftSample += (_state.outputEnable & 0x10) ? _square0->GetOutput() : 0;
+            leftSample += (_state.outputEnable & 0x20) ? _square1->GetOutput() : 0;
+            leftSample *= (((_state.masterVolume >> 4) & 0x07) + 1) * 40;
+
+            rightSample += (_state.outputEnable & 0x01) ? _square0->GetOutput() : 0;
+            rightSample += (_state.outputEnable & 0x02) ? _square1->GetOutput() : 0;
+            rightSample *= ((_state.masterVolume & 0x07) + 1) * 40;
+
+            // send any delta samples to Blip synth
+            if (_lastLeftSample != leftSample)
+            {
+                _synthLeft.offset(_cycleCount, leftSample - _lastLeftSample);
+                _lastLeftSample = leftSample;
+            }
+            if (_lastRightSample != rightSample)
+            {
+                _synthRight.offset(_cycleCount, rightSample - _lastRightSample);
+                _lastRightSample = rightSample;
+            }
+
+            _cycleCount += step;
         }
+    }
+
+    //if (_cycleCount >= 20000)
+    {
+        _bufLeft.end_frame(_cycleCount);
+        _bufRight.end_frame(_cycleCount);
+
+        if (_bufLeft.samples_avail() >= OutputBufferSampleSize)
+        {
+            u32 samplesRead = _bufLeft.read_samples(_sampleBuffer, OutputBufferSampleSize, 0);
+            _bufRight.read_samples(_sampleBuffer, OutputBufferSampleSize, 1);
+            
+            _host->SyncAudio();
+            _host->QueueAudio(_sampleBuffer, samplesRead);
+
+        }
+        _cycleCount = 0;
+    }
+}
+
+void GameBoyApu::TimerTick()
+{
+    // process events that are triggered by the system timer
+
+    Execute();
+
+    if (_state.channelEnable & 0x80) // APU is enabled
+    {
+        if ((_state.timerTick & 0x01) == 0x00)
+        {
+            // every 2nd tick
+            _square0->TickCounter();
+            _square1->TickCounter();
+
+            if ((_state.timerTick & 0x03) != 0x02) // every 4th tick
+            {
+                _square0->TickFrequencyEnvelope();
+            }
+        }
+        else if (_state.timerTick == 7)
+        {
+            // every 8 ticks
+            _square0->TickVolumeEnvelope();
+            _square1->TickVolumeEnvelope();
+        }
+
+        _state.timerTick++;
+        _state.timerTick &= 0x07;
     }
 }
 

@@ -25,4 +25,6 @@ public:
     virtual bool Initialize() = 0;
     virtual bool IsButtonPressed(HostButton button) = 0;
     virtual HostExitCode RunApp(int argc, const char *argv[]) = 0;
+    virtual void QueueAudio(s16 *buffer, u32 sampleCount) = 0;
+    virtual void SyncAudio() = 0;
 };

@@ -12,6 +12,9 @@ GameBoyPpu::GameBoyPpu(GameBoy *gameBoy, u8 *videoRam, u8 *oamRam)
 
     _pixelBuffer = new u32[160 * 144];
     memset(_pixelBuffer, 0, 160 * 144 * sizeof(u32));
+
+    _state.scanline = 0;
+    _pixelsRendered = 0;
 }
 
 GameBoyPpu::~GameBoyPpu()

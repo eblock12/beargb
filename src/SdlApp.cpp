@@ -58,8 +58,9 @@ bool SdlApp::Initialize()
     SDL_AudioSpec requestedAudioSpec;
     memset(&requestedAudioSpec, 0, sizeof(requestedAudioSpec));
     requestedAudioSpec.freq = 44100;
-    requestedAudioSpec.format = AUDIO_S16LSB;
-    requestedAudioSpec.channels = 1;
+    requestedAudioSpec.format = AUDIO_S16SYS;
+    requestedAudioSpec.channels = 2;
+    requestedAudioSpec.silence = 0;
     requestedAudioSpec.samples = 4096;
     requestedAudioSpec.callback = nullptr;
 
@@ -229,6 +230,7 @@ HostExitCode SdlApp::RunApp(int argc, const char *argv[])
 
         _keyboardState = SDL_GetKeyboardState(nullptr);
 
+/*
         u32 currentTicks = SDL_GetTicks();
         u32 ticksElapsed = currentTicks - lastTicks;
         lastTicks = currentTicks;
@@ -247,6 +249,7 @@ HostExitCode SdlApp::RunApp(int argc, const char *argv[])
 
         //noteSecondsLeft -= secondsElapsed;
 
+        
         if (SDL_GetQueuedAudioSize(_audioDevice) < (4096 * sizeof(s16)))
         {
             for (int i = 0; i < 1024; i++)
@@ -281,10 +284,25 @@ HostExitCode SdlApp::RunApp(int argc, const char *argv[])
 
                 noteSecondsLeft -= 1.0 / 44100.0;
             }
-        }
+        }*/
     }
 
     return HostExitCode::Success;
+}
+
+void SdlApp::QueueAudio(s16 *buffer, u32 sampleCount)
+{
+    SDL_QueueAudio(_audioDevice, buffer, sampleCount * 2 * sizeof(s16));
+}
+
+void SdlApp::SyncAudio()
+{
+    u32 maxBytes = 2759 * 4;
+
+    while (SDL_GetQueuedAudioSize(_audioDevice) > maxBytes)
+    {
+        SDL_Delay(1);
+    }
 }
 
 int main(int argc, const char *argv[])
