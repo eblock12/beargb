@@ -1,6 +1,7 @@
 #include "GameBoyApu.h"
 #include "GameBoy.h"
 
+#include <algorithm>
 #include <iostream>
 #include <memory.h>
 
@@ -91,25 +92,27 @@ void GameBoyApu::Execute()
                 _lastRightSample = rightSample;
             }
 
-            _cycleCount += step;
+           _cycleCount += step;
+
+            if (_cycleCount >= 20000)
+            {
+                _bufLeft.end_frame(_cycleCount);
+                _bufRight.end_frame(_cycleCount);
+
+                if (_bufLeft.samples_avail() >= OutputBufferSampleSize/2)
+                {
+                    u32 samplesRead = _bufLeft.read_samples(_sampleBuffer, OutputBufferSampleSize, 0);
+                    _bufRight.read_samples(_sampleBuffer, OutputBufferSampleSize, 1);
+
+                   // std::cout << "samplesRead=" << std::dec << int(samplesRead) << std::endl;
+
+                    //_host->SyncAudio();
+                    _host->QueueAudio(_sampleBuffer, samplesRead);
+
+                    _cycleCount = 0;
+                }
+            }
         }
-    }
-
-    //if (_cycleCount >= 20000)
-    {
-        _bufLeft.end_frame(_cycleCount);
-        _bufRight.end_frame(_cycleCount);
-
-        if (_bufLeft.samples_avail() >= OutputBufferSampleSize)
-        {
-            u32 samplesRead = _bufLeft.read_samples(_sampleBuffer, OutputBufferSampleSize, 0);
-            _bufRight.read_samples(_sampleBuffer, OutputBufferSampleSize, 1);
-            
-            _host->SyncAudio();
-            _host->QueueAudio(_sampleBuffer, samplesRead);
-
-        }
-        _cycleCount = 0;
     }
 }
 
@@ -146,6 +149,8 @@ void GameBoyApu::TimerTick()
 
 u8 GameBoyApu::ReadRegister(u16 addr)
 {
+    Execute();
+
     switch (addr)
     {
         case 0xFF10: // Square 0 Sweep Envelope
@@ -197,6 +202,8 @@ u8 GameBoyApu::ReadRegister(u16 addr)
 
 void GameBoyApu::WriteRegister(u16 addr, u8 val)
 {
+    Execute();
+
     switch (addr)
     {
         case 0xFF10: // Square 0 Sweep Envelope

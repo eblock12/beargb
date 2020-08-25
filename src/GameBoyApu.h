@@ -39,7 +39,7 @@ struct ApuState
 class GameBoyApu
 {
 private:
-    static constexpr u32 OutputBufferSampleSize = 4000;
+    static constexpr u32 OutputBufferSampleSize = 4096;
 
     GameBoy *_gameBoy;
     IHostSystem *_host;

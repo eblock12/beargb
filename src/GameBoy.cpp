@@ -37,6 +37,7 @@ void GameBoy::ExecuteTwoCycles()
 
     _apu->AddCycles(2);
     ExecuteTimer();
+    _ppu->ExecuteCycle(); // Adjust for CGB
     _ppu->ExecuteCycle();
     if ((_state.cycleCount & 0x3) == 0) // run DMA on 4 cycle intervals
     {
@@ -449,7 +450,7 @@ void GameBoy::ExecuteTimer()
     }
 
     // TODO: Adjust timings for CGB?
-	if (((newDivider & 0x1000) == 0) && 
+	if (((newDivider & 0x1000) == 0) &&
         ((_state.divider & 0x1000) != 0)) {
 		_apu->TimerTick();
 	}
