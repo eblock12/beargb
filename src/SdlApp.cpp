@@ -69,8 +69,8 @@ bool SdlApp::Initialize()
     if (_audioDevice > 0)
     {
         SDL_PauseAudioDevice(_audioDevice, 0); // start playing
-        std::cout << "Started playing: " << SDL_GetAudioDeviceName(2,0) << std::endl;
-        std::cout << "frequency " << _audioSpec.freq << std::endl;
+        //std::cout << "Started playing: " << SDL_GetAudioDeviceName(2,0) << std::endl;
+        //std::cout << "frequency " << _audioSpec.freq << std::endl;
     }
     else
     {

@@ -190,7 +190,8 @@ void GameBoySquareChannel::WriteRegister(u16 addr, u8 val)
             {
                 // reference: https://gbdev.gg8.se/wiki/articles/Gameboy_sound_hardware#Trigger_Event
 
-                _state.enabled = true; // Channel is enabled
+                _state.enabled = _state.envelopeIncrease || _state.envelopeVolume;
+
                 if (_state.length == 0)
                 {
                     _state.length = 64; // if reusing this, change to 256 for wave channel
@@ -202,7 +203,7 @@ void GameBoySquareChannel::WriteRegister(u16 addr, u8 val)
 
                 // reset volume envelope timer
                 _state.envelopeTimer = _state.envelopeLength;
-                _state.envelopeHalted = true;
+                _state.envelopeHalted = false;
 
                 // load internal volume from envelope volume
                 _state.volume = _state.envelopeVolume;

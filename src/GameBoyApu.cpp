@@ -12,6 +12,7 @@ GameBoyApu::GameBoyApu(GameBoy *gameBoy, IHostSystem *host)
 
     _square0.reset(new GameBoySquareChannel(this));
     _square1.reset(new GameBoySquareChannel(this));
+    _noise.reset(new GameBoyNoiseChannel(this));
 
     _cycleCount = 0;
     _pendingCycles = 0;
@@ -63,22 +64,35 @@ void GameBoyApu::Execute()
             u32 step = std::min({
                 _pendingCycles,
                 (s32)_square0->GetTimer(),
-                (s32)_square1->GetTimer()
+                (s32)_square1->GetTimer(),
+                //(s32)_wave->GetTimer(),
+                (s32)_noise->GetTimer()
             });
+
+            if (step == 0)
+            {
+                step = 1;
+            }
 
             _pendingCycles -= step;
 
             _square0->Execute(step);
             _square1->Execute(step);
+            //_wave->Execute(step);
+            _noise->Execute(step);
 
             s16 leftSample = 0, rightSample = 0;
 
             leftSample += (_state.outputEnable & 0x10) ? _square0->GetOutput() : 0;
             leftSample += (_state.outputEnable & 0x20) ? _square1->GetOutput() : 0;
+            //leftSample += (_state.outputEnable & 0x40) ? _wave->GetOutput() : 0;
+            leftSample += (_state.outputEnable & 0x80) ? _noise->GetOutput() : 0;
             leftSample *= (((_state.masterVolume >> 4) & 0x07) + 1) * 40;
 
             rightSample += (_state.outputEnable & 0x01) ? _square0->GetOutput() : 0;
             rightSample += (_state.outputEnable & 0x02) ? _square1->GetOutput() : 0;
+            //rightSample += (_state.outputEnable & 0x04) ? _wave->GetOutput() : 0;
+            rightSample += (_state.outputEnable & 0x08) ? _noise->GetOutput() : 0;
             rightSample *= ((_state.masterVolume & 0x07) + 1) * 40;
 
             // send any delta samples to Blip synth
@@ -130,6 +144,7 @@ void GameBoyApu::TimerTick()
             // every 2nd tick
             _square0->TickCounter();
             _square1->TickCounter();
+            _noise->TickCounter();
 
             if ((_state.timerTick & 0x03) != 0x02) // every 4th tick
             {
@@ -141,6 +156,7 @@ void GameBoyApu::TimerTick()
             // every 8 ticks
             _square0->TickVolumeEnvelope();
             _square1->TickVolumeEnvelope();
+            _noise->TickVolumeEnvelope();
         }
 
         _state.timerTick++;
@@ -178,7 +194,7 @@ u8 GameBoyApu::ReadRegister(u16 addr)
         case 0xFF21: // Noise volume envelope
         case 0xFF22: // Noise polynomial counter
         case 0xFF23: // Noise Initial/Counter
-            return 0x00;
+            return _noise->ReadRegister(addr - 0xFF20);
 
         case 0xFF24: // Master volume + external audio enable
             return _state.masterVolume;
@@ -233,6 +249,7 @@ void GameBoyApu::WriteRegister(u16 addr, u8 val)
         case 0xFF21: // Noise volume envelope
         case 0xFF22: // Noise polynomial counter
         case 0xFF23: // Noise Initial/Counter
+            _noise->WriteRegister(addr - 0xFF20, val);
             break;
 
         case 0xFF24: // Master volume + external audio enable
