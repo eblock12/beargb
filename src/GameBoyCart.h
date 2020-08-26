@@ -191,3 +191,85 @@ public:
     u8 ReadRegister(u16 addr) override;
     void WriteRegister(u16 addr, u8 val) override;
 };
+
+class GameBoyCartMbc2 : public GameBoyCart
+{
+private:
+    bool _ramGate;
+    u8 _romBank;
+
+    u8 *_cartRam;
+
+    static constexpr int PrgBankSize = 0x4000; // 16 KB
+public:
+    GameBoyCartMbc2(GameBoy *gameBoy, u8 *romData) : GameBoyCart(gameBoy, romData)
+    {
+        _cartRam = new u8[512]; // 512x4 bits (only lower nibble is accessible)
+    }
+
+    ~GameBoyCartMbc2() override
+    {
+        delete[] _cartRam;
+    }
+
+    void Reset() override;
+    void RefreshMemoryMap() override;
+    u8 ReadRegister(u16 addr) override;
+    void WriteRegister(u16 addr, u8 val) override;
+};
+
+class GameBoyCartMbc3 : public GameBoyCart
+{
+private:
+    bool _ramGate;
+    u8 _romBank;
+    u8 _ramBank;
+
+    u8 *_cartRam;
+
+    static constexpr int PrgBankSize = 0x4000; // 16 KB
+    static constexpr int RamBankSize = 0x2000; // 8 KB
+public:
+    GameBoyCartMbc3(GameBoy *gameBoy, u8 *romData) : GameBoyCart(gameBoy, romData)
+    {
+        _cartRam = new u8[_header.GetRamSize()];
+    }
+
+    ~GameBoyCartMbc3() override
+    {
+        delete[] _cartRam;
+    }
+
+    void Reset() override;
+    void RefreshMemoryMap() override;
+    u8 ReadRegister(u16 addr) override;
+    void WriteRegister(u16 addr, u8 val) override;
+};
+
+class GameBoyCartMbc5 : public GameBoyCart
+{
+private:
+    bool _ramGate;
+    u16 _romBank;
+    u8 _ramBank;
+
+    u8 *_cartRam;
+
+    static constexpr int PrgBankSize = 0x4000; // 16 KB
+    static constexpr int RamBankSize = 0x2000; // 8 KB
+public:
+    GameBoyCartMbc5(GameBoy *gameBoy, u8 *romData) : GameBoyCart(gameBoy, romData)
+    {
+        _cartRam = new u8[_header.GetRamSize()];
+    }
+
+    ~GameBoyCartMbc5() override
+    {
+        delete[] _cartRam;
+    }
+
+    void Reset() override;
+    void RefreshMemoryMap() override;
+    u8 ReadRegister(u16 addr) override;
+    void WriteRegister(u16 addr, u8 val) override;
+};

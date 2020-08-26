@@ -47,8 +47,7 @@ void GameBoyPpu::ExecuteCycle()
             {
                 case 3:
                     _state.ly = _state.scanline;
-                    //std::cout << "y:" << std::dec << int(_state.ly) << "=" << int(_state.lyCompare) << std::endl;
-                    break;
+                   break;
                 case 4:
                     _state.lcdStatus |= 0x2; // OAM search mode
                     _state.lcdStatus &= ~0x1;
@@ -470,6 +469,8 @@ u8 GameBoyPpu::ReadRegister(u16 addr)
 
 void GameBoyPpu::Reset()
 {
+    // bios would normally enable this
+    _state.lcdPower = true;
 }
 
 void GameBoyPpu::StartRender()

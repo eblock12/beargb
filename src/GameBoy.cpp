@@ -51,6 +51,7 @@ void GameBoy::Reset()
 
     _cart->Reset();
     _cpu->Reset();
+    _ppu->Reset();
 
     MapMemory(_workRam, 0xC000, 0xDFFF, false /*readOnly*/);
     MapMemory(_workRam, 0xE000, 0xFDFF, false /*readOnly*/);
