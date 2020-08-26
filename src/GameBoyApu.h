@@ -4,6 +4,7 @@
 #include "IHostSystem.h"
 #include "GameBoyNoiseChannel.h"
 #include "GameBoySquareChannel.h"
+#include "GameBoyWaveChannel.h"
 #include "Blip_Buffer.h"
 #include <memory>
 #include <iostream>
@@ -50,6 +51,7 @@ private:
     std::unique_ptr<GameBoySquareChannel> _square0;
     std::unique_ptr<GameBoySquareChannel> _square1;
     std::unique_ptr<GameBoyNoiseChannel> _noise;
+    std::unique_ptr<GameBoyWaveChannel> _wave;
 
     ApuState _state;
 
