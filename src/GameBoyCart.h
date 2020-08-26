@@ -192,6 +192,32 @@ public:
     void WriteRegister(u16 addr, u8 val) override;
 };
 
+class GameBoyCartMbc2 : public GameBoyCart
+{
+private:
+    bool _ramGate;
+    u8 _romBank;
+
+    u8 *_cartRam;
+
+    static constexpr int PrgBankSize = 0x4000; // 16 KB
+public:
+    GameBoyCartMbc2(GameBoy *gameBoy, u8 *romData) : GameBoyCart(gameBoy, romData)
+    {
+        _cartRam = new u8[512]; // 512x4 bits (only lower nibble is accessible)
+    }
+
+    ~GameBoyCartMbc2() override
+    {
+        delete[] _cartRam;
+    }
+
+    void Reset() override;
+    void RefreshMemoryMap() override;
+    u8 ReadRegister(u16 addr) override;
+    void WriteRegister(u16 addr, u8 val) override;
+};
+
 class GameBoyCartMbc3 : public GameBoyCart
 {
 private:

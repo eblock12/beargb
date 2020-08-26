@@ -68,6 +68,9 @@ GameBoyCart *GameBoyCart::CreateFromRomFile(const char *filePath, GameBoy *gameB
             case 0x02: // MBC1+RAM
             case 0x03: // MBC1+RAM+Battery
                 return new GameBoyCartMbc1(gameBoy, romData);
+            case 0x05: // MBC2
+            case 0x06: // MBC2+RAM+Battery
+                return new GameBoyCartMbc2(gameBoy, romData);
             case 0x0F: // MBC3+Timer+Battery
             case 0x10: // MBC3+RAM+Timer+Battery
             case 0x11: // MBC3
@@ -169,6 +172,84 @@ void GameBoyCartMbc1::WriteRegister(u16 addr, u8 val)
         case 0x6000: // MODE: MBC1 mode register
             _mode = (val & 0x01);
             break;
+    }
+
+    RefreshMemoryMap();
+}
+
+void GameBoyCartMbc2::Reset()
+{
+    _ramGate = false;
+    _romBank = 1;
+
+    // lower ROM area is writeable as register
+    _gameBoy->MapRegisters(0x0000, 0x3FFF, false /*canRead*/, true /*canWrite*/);
+}
+
+void GameBoyCartMbc2::RefreshMemoryMap()
+{
+    // map the the ROM area
+    _gameBoy->MapMemory(
+        _romData,
+        0x0000,
+        0x3FFF,
+        true /*readOnly*/);
+    _gameBoy->MapMemory(
+        _romData + _romBank * PrgBankSize,
+        0x4000,
+        0x7FFF,
+        true /*readOnly*/);
+
+    // map the RAM area if allowed
+    // TODO: RTC register mapping
+    if (_ramGate)
+    {
+        for(int i = 0; i < 16; i++) // ram is mirrored 16 times in a row
+        {
+            _gameBoy->MapMemory(
+                _cartRam,
+                0xA000 + (0x200 * i),
+                0xA1FF + (0x200 * i),
+                false /*readOnly*/);
+        }
+        _gameBoy->MapRegisters(0xA000, 0xBFFF, false /*canRead*/, true /*canWrite*/);
+    }
+    else
+    {
+        _gameBoy->UnmapMemory(0xA000, 0xBFFF);
+        _gameBoy->MapRegisters(0xA000, 0xBFFF, true/*canRead*/, false/*canWrite*/);
+    }
+}
+
+u8 GameBoyCartMbc2::ReadRegister(u16 addr)
+{
+    // this is returned when RAM is disabled
+    return 0xFF;
+}
+
+void GameBoyCartMbc2::WriteRegister(u16 addr, u8 val)
+{
+    // handle RAM writes as a register so the upper nibble can be chopped off
+    if (addr >= 0xA000 && addr <= 0xBFFF)
+    {
+        _cartRam[addr & 0x1FF] = val & 0x0F;
+    }
+    else
+    {
+        switch (addr & 0x100)
+        {
+            case 0x000: // RAM Enable
+                _ramGate = ((val & 0x0F) == 0x0A);
+                break;
+            case 0x100: // ROM bank number
+                _romBank = val & 0x0F;
+                if (_romBank < 0)
+                {
+                    // 0 is disallowed
+                    _romBank = 1;
+                }
+                break;
+        }
     }
 
     RefreshMemoryMap();
