@@ -13,6 +13,7 @@ GameBoyApu::GameBoyApu(GameBoy *gameBoy, IHostSystem *host)
     _square0.reset(new GameBoySquareChannel(this));
     _square1.reset(new GameBoySquareChannel(this));
     _noise.reset(new GameBoyNoiseChannel(this));
+    _wave.reset(new GameBoyWaveChannel(this));
 
     _cycleCount = 0;
     _pendingCycles = 0;
@@ -65,7 +66,7 @@ void GameBoyApu::Execute()
                 _pendingCycles,
                 (s32)_square0->GetTimer(),
                 (s32)_square1->GetTimer(),
-                //(s32)_wave->GetTimer(),
+                (s32)_wave->GetTimer(),
                 (s32)_noise->GetTimer()
             });
 
@@ -78,20 +79,20 @@ void GameBoyApu::Execute()
 
             _square0->Execute(step);
             _square1->Execute(step);
-            //_wave->Execute(step);
+            _wave->Execute(step);
             _noise->Execute(step);
 
             s16 leftSample = 0, rightSample = 0;
 
             leftSample += (_state.outputEnable & 0x10) ? _square0->GetOutput() : 0;
             leftSample += (_state.outputEnable & 0x20) ? _square1->GetOutput() : 0;
-            //leftSample += (_state.outputEnable & 0x40) ? _wave->GetOutput() : 0;
+            leftSample += (_state.outputEnable & 0x40) ? _wave->GetOutput() : 0;
             leftSample += (_state.outputEnable & 0x80) ? _noise->GetOutput() : 0;
             leftSample *= (((_state.masterVolume >> 4) & 0x07) + 1) * 40;
 
             rightSample += (_state.outputEnable & 0x01) ? _square0->GetOutput() : 0;
             rightSample += (_state.outputEnable & 0x02) ? _square1->GetOutput() : 0;
-            //rightSample += (_state.outputEnable & 0x04) ? _wave->GetOutput() : 0;
+            rightSample += (_state.outputEnable & 0x04) ? _wave->GetOutput() : 0;
             rightSample += (_state.outputEnable & 0x08) ? _noise->GetOutput() : 0;
             rightSample *= ((_state.masterVolume & 0x07) + 1) * 40;
 
@@ -144,6 +145,7 @@ void GameBoyApu::TimerTick()
             // every 2nd tick
             _square0->TickCounter();
             _square1->TickCounter();
+            _wave->TickCounter();
             _noise->TickCounter();
 
             if ((_state.timerTick & 0x03) != 0x02) // every 4th tick
@@ -188,7 +190,7 @@ u8 GameBoyApu::ReadRegister(u16 addr)
         case 0xFF1C: // Wave output level
         case 0xFF1D: // Frequency (Low Byte)
         case 0xFF1E: // Frequency (High 3 bits + Initial/Counter)
-            return 0x00;
+            return _wave->ReadRegister(addr - 0xFF1A);
 
         case 0xFF20: // Noise length
         case 0xFF21: // Noise volume envelope
@@ -211,7 +213,7 @@ u8 GameBoyApu::ReadRegister(u16 addr)
         case 0xFF34: case 0xFF35: case 0xFF36: case 0xFF37:
 		case 0xFF38: case 0xFF39: case 0xFF3A: case 0xFF3B:
         case 0xFF3C: case 0xFF3D: case 0xFF3E: case 0xFF3F:
-            return 0x00;
+            return _wave->ReadWaveRam(addr - 0xFF30);
     }
 
     return 0xFF;
@@ -243,7 +245,7 @@ void GameBoyApu::WriteRegister(u16 addr, u8 val)
         case 0xFF1C: // Wave output level
         case 0xFF1D: // Frequency (Low Byte)
         case 0xFF1E: // Frequency (High 3 bits + Initial/Counter)
-            break;
+            _wave->WriteRegister(addr - 0xFF1A, val);
 
         case 0xFF20: // Noise length
         case 0xFF21: // Noise volume envelope
@@ -269,6 +271,6 @@ void GameBoyApu::WriteRegister(u16 addr, u8 val)
         case 0xFF34: case 0xFF35: case 0xFF36: case 0xFF37:
         case 0xFF38: case 0xFF39: case 0xFF3A: case 0xFF3B:
         case 0xFF3C: case 0xFF3D: case 0xFF3E: case 0xFF3F:
-            break;
+            _wave->WriteWaveRam(addr - 0xFF30, val);
     }
 }

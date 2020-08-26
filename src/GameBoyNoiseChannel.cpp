@@ -80,7 +80,7 @@ void GameBoyNoiseChannel::TickVolumeEnvelope()
             {
                 _state.volume--;
             }
-            
+
             _state.envelopeTimer = _state.envelopeLength;
         }
     }
@@ -115,7 +115,7 @@ u8 GameBoyNoiseChannel::ReadRegister(u16 addr)
                 (_state.useShortStep ? 0x08 : 0) |
                 (_state.shiftFrequency << 4);
 
-        case 3: // Noise initial/counter (FF23)
+        case 3: // Noise initialize/counter (FF23)
             return (_state.lengthEnable ? 0x40 : 0);
     }
 

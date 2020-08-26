@@ -19,7 +19,8 @@ OBJS = \
 	$(SRCDIR)/GameBoyPpu.o \
 	$(SRCDIR)/GameBoyApu.o \
 	$(SRCDIR)/GameBoySquareChannel.o \
-	$(SRCDIR)/GameBoyNoiseChannel.o
+	$(SRCDIR)/GameBoyNoiseChannel.o \
+	$(SRCDIR)/GameBoyWaveChannel.o
 
 
 ifdef USESDL
