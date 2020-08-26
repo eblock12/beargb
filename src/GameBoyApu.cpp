@@ -26,12 +26,13 @@ GameBoyApu::GameBoyApu(GameBoy *gameBoy, IHostSystem *host)
     u32 clockRate = 4194304;
 
     // setup Blip Buffers
+    _bufLeft.clear();
+    _bufRight.clear();
+
     _bufLeft.sample_rate(sampleRate);
     _bufLeft.clock_rate(clockRate);
-    _bufLeft.clear();
     _bufRight.sample_rate(sampleRate);
     _bufRight.clock_rate(clockRate);
-    _bufRight.clear();
 
     // setup Blip synths
     _synthLeft.output(&_bufLeft);
@@ -61,8 +62,8 @@ void GameBoyApu::Execute()
         {
             u32 step = std::min({
                 _pendingCycles,
-                (u32)_square0->GetTimer(),
-                (u32)_square1->GetTimer()
+                (s32)_square0->GetTimer(),
+                (s32)_square1->GetTimer()
             });
 
             _pendingCycles -= step;
@@ -83,35 +84,35 @@ void GameBoyApu::Execute()
             // send any delta samples to Blip synth
             if (_lastLeftSample != leftSample)
             {
-                _synthLeft.offset(_cycleCount, leftSample - _lastLeftSample);
+                _synthLeft.offset_inline(_cycleCount, leftSample - _lastLeftSample);
                 _lastLeftSample = leftSample;
             }
             if (_lastRightSample != rightSample)
             {
-                _synthRight.offset(_cycleCount, rightSample - _lastRightSample);
+                _synthRight.offset_inline(_cycleCount, rightSample - _lastRightSample);
                 _lastRightSample = rightSample;
             }
 
            _cycleCount += step;
+        }
+    }
 
-            if (_cycleCount >= 20000)
-            {
-                _bufLeft.end_frame(_cycleCount);
-                _bufRight.end_frame(_cycleCount);
+    if (_cycleCount >= 20000)
+    {
+        _bufLeft.end_frame(_cycleCount);
+        _bufRight.end_frame(_cycleCount);
 
-                if (_bufLeft.samples_avail() >= OutputBufferSampleSize/2)
-                {
-                    u32 samplesRead = _bufLeft.read_samples(_sampleBuffer, OutputBufferSampleSize, 0);
-                    _bufRight.read_samples(_sampleBuffer, OutputBufferSampleSize, 1);
+        //if (_bufLeft.samples_avail() >= OutputBufferSampleSize/2)
+        {
+            u32 samplesRead = _bufLeft.read_samples(_sampleBuffer, OutputBufferSampleSize, 1);
+            _bufRight.read_samples(_sampleBuffer + 1, OutputBufferSampleSize, 1);
 
-                   // std::cout << "samplesRead=" << std::dec << int(samplesRead) << std::endl;
+           // std::cout << "samplesRead=" << std::dec << int(samplesRead) << std::endl;
 
-                    //_host->SyncAudio();
-                    _host->QueueAudio(_sampleBuffer, samplesRead);
+            _host->SyncAudio();
+            _host->QueueAudio(_sampleBuffer, samplesRead);
 
-                    _cycleCount = 0;
-                }
-            }
+            _cycleCount = 0;
         }
     }
 }

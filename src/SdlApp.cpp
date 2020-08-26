@@ -1,5 +1,6 @@
 #include "SdlApp.h"
 
+#include <cstring>
 #include <iostream>
 
 // GPI internal screen res
@@ -68,7 +69,8 @@ bool SdlApp::Initialize()
     if (_audioDevice > 0)
     {
         SDL_PauseAudioDevice(_audioDevice, 0); // start playing
-        std::cout << "Started playing" << std::endl;
+        std::cout << "Started playing: " << SDL_GetAudioDeviceName(2,0) << std::endl;
+        std::cout << "frequency " << _audioSpec.freq << std::endl;
     }
     else
     {
@@ -118,11 +120,6 @@ HostExitCode SdlApp::RunApp(int argc, const char *argv[])
     SDL_Event event;
     bool running = true;
 
-    s16 outputBuffer[1024] = {};
-    u32 bufferPosition = 0;
-
-    double sinePhase = 0.0;
-
     u32 lastTicks = SDL_GetTicks();
 
     while (running)
@@ -137,7 +134,7 @@ HostExitCode SdlApp::RunApp(int argc, const char *argv[])
         for (int x = 0; x < 160; x++)
         for (int y = 0; y < 144; y++)
         {
-            uint gbColor = gameBoyPixels[y * 160 + x];
+            u32 gbColor = gameBoyPixels[y * 160 + x];
 
             ((u8*)_surface->pixels)[((y + cy) * _surface->w + x + cx) * 4 + 0] = gbColor >> 8;
             ((u8*)_surface->pixels)[((y + cy) * _surface->w + x + cx) * 4 + 1] = gbColor >> 16;
@@ -172,15 +169,14 @@ void SdlApp::QueueAudio(s16 *buffer, u32 sampleCount)
 
 void SdlApp::SyncAudio()
 {
-    u32 maxBytes = 2759 * 4;
+    u32 maxBytes = 2940 * 8;
 
     while (SDL_GetQueuedAudioSize(_audioDevice) > maxBytes)
     {
-        SDL_Delay(1);
     }
 }
 
-int main(int argc, const char *argv[])
+int main(int argc, char *argv[])
 {
     SdlApp app;
 
@@ -189,5 +185,5 @@ int main(int argc, const char *argv[])
         return 1;
     }
 
-    return (int)app.RunApp(argc, argv);
+    return (int)app.RunApp(argc, (const char **)argv);
 }

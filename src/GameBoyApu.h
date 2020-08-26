@@ -5,6 +5,8 @@
 #include "GameBoySquareChannel.h"
 #include "Blip_Buffer.h"
 #include <memory>
+#include <iostream>
+
 
 class GameBoy;
 
@@ -49,7 +51,7 @@ private:
 
     ApuState _state;
 
-    u32 _pendingCycles;
+    s32 _pendingCycles;
     u32 _cycleCount;
 
     blip_sample_t *_sampleBuffer;
@@ -68,7 +70,7 @@ public:
     GameBoyApu(GameBoy *gameBoy, IHostSystem *host);
     ~GameBoyApu();
 
-    void AddCycles(u32 cycles) { _pendingCycles += cycles; }
+    void AddCycles(s32 cycles) { _pendingCycles += cycles; }
 
     void Execute();
     void TimerTick();

@@ -75,7 +75,7 @@ void GameBoy::RunCycles(u32 cycles)
 void GameBoy::RunOneFrame()
 {
     // 154 scanlines per frame, 456 clocks per scanline
-    RunCycles(154 * 456 / 2);
+    RunCycles(154 * 456);
 
     _apu->Execute();
 }
