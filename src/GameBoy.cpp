@@ -17,7 +17,7 @@ GameBoy::GameBoy(GameBoyModel model, const char *romFile, IHostSystem *host)
 
     _cart.reset(GameBoyCart::CreateFromRomFile(romFile, this));
     _cpu.reset(new GameBoyCpu(this));
-    _ppu.reset(new GameBoyPpu(this, _videoRam, _oamRam));
+    _ppu.reset(new GameBoyPpu(this, host, _videoRam, _oamRam));
     _apu.reset(new GameBoyApu(this, host));
 
     Reset();

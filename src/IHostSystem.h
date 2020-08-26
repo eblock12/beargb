@@ -27,4 +27,6 @@ public:
     virtual HostExitCode RunApp(int argc, const char *argv[]) = 0;
     virtual void QueueAudio(s16 *buffer, u32 sampleCount) = 0;
     virtual void SyncAudio() = 0;
+
+    virtual void PushVideoFrame(u32 *pixelBuffer) = 0;
 };

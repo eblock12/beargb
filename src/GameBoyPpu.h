@@ -1,6 +1,7 @@
 #pragma once
 
 #include "shared.h"
+#include "IHostSystem.h"
 
 class GameBoy;
 
@@ -135,6 +136,7 @@ class GameBoyPpu
 {
 private:
     GameBoy *_gameBoy;
+    IHostSystem *_host;
     PpuState _state;
 
     u8 *_videoRam = nullptr;
@@ -178,7 +180,7 @@ private:
     inline void MoveToNextSprite();
     inline void CheckLcdStatusIrq();
 public:
-    GameBoyPpu(GameBoy *gameBoy, u8 *videoRam, u8 *oamRam);
+    GameBoyPpu(GameBoy *gameBoy, IHostSystem *host, u8 *videoRam, u8 *oamRam);
     ~GameBoyPpu();
 
     void ExecuteCycle();

@@ -4,9 +4,10 @@
 #include <memory.h>
 #include <iostream>
 
-GameBoyPpu::GameBoyPpu(GameBoy *gameBoy, u8 *videoRam, u8 *oamRam)
+GameBoyPpu::GameBoyPpu(GameBoy *gameBoy, IHostSystem *host, u8 *videoRam, u8 *oamRam)
 {
     _gameBoy = gameBoy;
+    _host = host;
     _videoRam = videoRam;
     _oamRam = oamRam;
 
@@ -84,6 +85,7 @@ void GameBoyPpu::ExecuteCycle()
                         _state.lcdStatus |= 0x1; // v-blank mode
                         _windowOffset = 0;
                         _gameBoy->SetInterruptFlags(IrqFlag::VBlank);
+                        _host->PushVideoFrame(_pixelBuffer);
                     }
                     break;
                 case 12:

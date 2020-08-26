@@ -11,15 +11,15 @@ GameBoyWaveChannel::~GameBoyWaveChannel()
 #include <iostream>
 void GameBoyWaveChannel::Execute(u32 cycles)
 {
-	if (_state.enabled && _state.volume)
+    if (_state.enabled && _state.volume)
     {
-		_state.output = _state.waveBuffer >> (_state.volume - 1);
+        _state.output = _state.waveBuffer >> (_state.volume - 1);
        // std::cout << "wave output=" << std::dec << int(_state.output) << std::endl;
-	}
+    }
     else
     {
-		_state.output = 0;
-	}
+        _state.output = 0;
+    }
 
     _state.timer -= cycles;
     if (_state.timer == 0)
@@ -68,7 +68,7 @@ u8 GameBoyWaveChannel::ReadRegister(u16 addr)
         case 4: // Length trigger enable
             return _state.lengthEnable ? 0x40 : 0;
     }
-    
+
     return 0xFF; // open bus
 }
 

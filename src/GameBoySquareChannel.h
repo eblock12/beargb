@@ -70,12 +70,12 @@ struct SquareChannelState
 class GameBoySquareChannel
 {
 private:
-	static constexpr s8 DutyTable[4][8] = {
-		{ 0, 1, 1, 1, 1, 1, 1, 1 }, // 12.5%
-		{ 0, 0, 1, 1, 1, 1, 1, 1 }, // 25%
-		{ 0, 0, 0, 0, 1, 1, 1, 1 }, // 50%
-		{ 0, 0, 0, 0, 0, 0, 1, 1 }  // 75%
-	};
+    static constexpr s8 DutyTable[4][8] = {
+        { 0, 1, 1, 1, 1, 1, 1, 1 }, // 12.5%
+        { 0, 0, 1, 1, 1, 1, 1, 1 }, // 25%
+        { 0, 0, 0, 0, 1, 1, 1, 1 }, // 50%
+        { 0, 0, 0, 0, 0, 0, 1, 1 }  // 75%
+    };
 
     GameBoyApu *_apu;
 

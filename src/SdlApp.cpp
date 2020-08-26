@@ -10,6 +10,8 @@ const int SCREEN_HEIGHT = 240;
 SdlApp::SdlApp()
 {
     _window = nullptr;
+    _renderer = nullptr;
+    _frameTexture = nullptr;
     _audioDevice = 0;
 }
 
@@ -19,10 +21,19 @@ SdlApp::~SdlApp()
     {
         SDL_CloseAudioDevice(_audioDevice);
     }
+    if (_frameTexture != nullptr)
+    {
+        SDL_DestroyTexture(_frameTexture);
+    }
+    if (_renderer != nullptr)
+    {
+        SDL_DestroyRenderer(_renderer);
+    }
     if (_window != nullptr)
     {
         SDL_DestroyWindow(_window);
     }
+
     SDL_Quit();
 }
 
@@ -39,22 +50,22 @@ bool SdlApp::Initialize()
         SDL_WINDOWPOS_UNDEFINED,
         SCREEN_WIDTH,
         SCREEN_HEIGHT,
-        0);
+        SDL_WINDOW_RESIZABLE);
     if (_window == nullptr)
     {
         return false;
     }
 
-    _surface = SDL_GetWindowSurface(_window);
-    if (_surface == nullptr)
+    _renderer = SDL_CreateRenderer(_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    if (_renderer == nullptr)
     {
         return false;
     }
+    SDL_RenderSetLogicalSize(_renderer, 160, 144);
+    SDL_RenderClear(_renderer);
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
 
-    SDL_LockSurface(_surface);
-    memset(_surface->pixels, 0, _surface->h * _surface->pitch);
-    SDL_UnlockSurface(_surface);
-    SDL_UpdateWindowSurface(_window);
+    _frameTexture = SDL_CreateTexture(_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 160, 144);
 
     SDL_AudioSpec requestedAudioSpec;
     memset(&requestedAudioSpec, 0, sizeof(requestedAudioSpec));
@@ -120,31 +131,10 @@ HostExitCode SdlApp::RunApp(int argc, const char *argv[])
     SDL_Event event;
     bool running = true;
 
-    u32 lastTicks = SDL_GetTicks();
-
     while (running)
     {
         _gameBoy->RunOneFrame();
-        u32 *gameBoyPixels = _gameBoy->GetPixelBuffer();
-
-        SDL_LockSurface(_surface);
-
-        int cx = 80;
-        int cy = 48;
-        for (int x = 0; x < 160; x++)
-        for (int y = 0; y < 144; y++)
-        {
-            u32 gbColor = gameBoyPixels[y * 160 + x];
-
-            ((u8*)_surface->pixels)[((y + cy) * _surface->w + x + cx) * 4 + 0] = gbColor >> 8;
-            ((u8*)_surface->pixels)[((y + cy) * _surface->w + x + cx) * 4 + 1] = gbColor >> 16;
-            ((u8*)_surface->pixels)[((y + cy) * _surface->w + x + cx) * 4 + 2] = gbColor >> 24;
-            ((u8*)_surface->pixels)[((y + cy) * _surface->w + x + cx) * 4 + 3] = 0; // alpha
-        }
-
-        SDL_UnlockSurface(_surface);
-
-        SDL_UpdateWindowSurface(_window);
+        //u32 *gameBoyPixels = _gameBoy->GetPixelBuffer();
 
         while (SDL_PollEvent(&event))
         {
@@ -174,6 +164,13 @@ void SdlApp::SyncAudio()
     while (SDL_GetQueuedAudioSize(_audioDevice) > maxBytes)
     {
     }
+}
+
+void SdlApp::PushVideoFrame(u32 *pixelBuffer)
+{
+    SDL_UpdateTexture(_frameTexture, nullptr, pixelBuffer, 160 * sizeof(u32));
+    SDL_RenderCopy(_renderer, _frameTexture, nullptr, nullptr);
+    SDL_RenderPresent(_renderer);
 }
 
 int main(int argc, char *argv[])
