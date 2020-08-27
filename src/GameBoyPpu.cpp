@@ -441,9 +441,9 @@ void GameBoyPpu::CheckLcdStatusIrq()
     bool triggerStat =
         _state.lcdPower &&
         (((_state.lcdStatus & LcdStatusFlags::CoincidentScanline) && _state.lyCoincident) ||
-        ((_state.lcdStatus & LcdStatusFlags::OamSearch) && (_state.lcdStatus & LcdModeFlag::OamSearch) == LcdModeFlag::OamSearch) ||
-        ((_state.lcdStatus & LcdStatusFlags::VBlank) && (_state.lcdStatus & LcdModeFlag::VBlank) == LcdModeFlag::VBlank) ||
-        ((_state.lcdStatus & LcdStatusFlags::HBlank) && (_state.lcdStatus & LcdModeFlag::HBlank) == LcdModeFlag::HBlank));
+        ((_state.lcdStatus & LcdStatusFlags::OamSearch) && (_state.lcdStatus & 3) == LcdModeFlag::OamSearch) ||
+        ((_state.lcdStatus & LcdStatusFlags::VBlank) && (_state.lcdStatus & 3) == LcdModeFlag::VBlank) ||
+        ((_state.lcdStatus & LcdStatusFlags::HBlank) && (_state.lcdStatus & 3) == LcdModeFlag::HBlank));
 
     if (triggerStat && !_state.raisedStatIrq)
     {
