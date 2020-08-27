@@ -117,18 +117,12 @@ void GameBoyApu::Execute()
         _bufLeft.end_frame(_cycleCount);
         _bufRight.end_frame(_cycleCount);
 
-        //if (_bufLeft.samples_avail() >= OutputBufferSampleSize/2)
-        {
-            u32 samplesRead = _bufLeft.read_samples(_sampleBuffer, OutputBufferSampleSize, 1);
-            _bufRight.read_samples(_sampleBuffer + 1, OutputBufferSampleSize, 1);
+        u32 samplesRead = _bufLeft.read_samples(_sampleBuffer, OutputBufferSampleSize, 1);
+        _bufRight.read_samples(_sampleBuffer + 1, OutputBufferSampleSize, 1);
 
-           // std::cout << "samplesRead=" << std::dec << int(samplesRead) << std::endl;
+        _host->QueueAudio(_sampleBuffer, samplesRead);
 
-            _host->SyncAudio();
-            _host->QueueAudio(_sampleBuffer, samplesRead);
-
-            _cycleCount = 0;
-        }
+        _cycleCount = 0;
     }
 }
 

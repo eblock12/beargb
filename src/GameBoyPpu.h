@@ -68,6 +68,9 @@ struct PpuState
 
     // Y coordinate of the upper left corner of the window
     u8 windowY;
+
+    // track cycles where no activity is happening (VBlank/HBlank) so can bail out early
+    u16 sleepCycles;
 };
 
 namespace LcdStatusFlags

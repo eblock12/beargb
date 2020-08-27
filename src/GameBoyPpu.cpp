@@ -29,117 +29,134 @@ void GameBoyPpu::ExecuteCycle()
 
     u8 preserveMode = _state.lcdStatus & 0x03;
 
-    if (_state.lcdPower)
+    if (!_state.lcdPower)
     {
-        if (_state.scanline < 144)
+        if ((_gameBoy->GetCycleCount() % (154 * 456)) == 0)
         {
-            // currently drawing a visible scanline
-
-            // h-blank doesnt occur at a fixed cycle count
-            // time to finish rendering varies
-            if (_pixelsRendered == 160)
-            {
-                _state.lcdStatus &= ~0x03; // now H-Blank
-                _pixelsRendered = 0;
-            }
-
-            // handle events that occur at each cycle within scanline
-            switch (_state.tick)
-            {
-                case 3:
-                    _state.ly = _state.scanline;
-                   break;
-                case 4:
-                    _state.lcdStatus |= 0x2; // OAM search mode
-                    _state.lcdStatus &= ~0x1;
-                    _spritesFound = 0;
-                    break;
-                case 84:
-                    _state.lcdStatus |= LcdModeFlag::Drawing; // Drawing mode
-                    StartRender();
-                    _renderPaused = true;
-                    break;
-                case 89:
-                    _renderPaused = false;
-                    break;
-                case 456: // end of scanline
-                    _state.tick = 0;
-                    _state.scanline++;
-                    if (_state.scanline == 144)
-                    {
-                        // entering v-blank, LY is updated immediately
-                        _state.ly = _state.scanline;
-                    }
-                    break;
-            }
+            _host->SyncAudio();
+            _host->PushVideoFrame(_pixelBuffer);
         }
-        else
-        {
-            // currently in v-blank
-            switch (_state.tick) // cycle count within scanline
-            {
-                case 4:
-                    if (_state.scanline == 144)
-                    {
-                        _state.lcdStatus &= ~0x2;
-                        _state.lcdStatus |= 0x1; // v-blank mode
-                        _windowOffset = 0;
-                        _gameBoy->SetInterruptFlags(IrqFlag::VBlank);
-                        _host->PushVideoFrame(_pixelBuffer);
-                    }
-                    break;
-                case 12:
-                    if (_state.scanline == 153)
-                    {
-                        // on last line of v-blank this goes to 0 early
-                        _state.ly = 0;
-                    }
-                    break;
-                case 456: // end of v-blank line
-                    _state.tick = 0;
-                    _state.scanline++;
-                    if (_state.scanline == 154)
-                    {
-                        // exiting v-blank, starting new frame
-                        _state.scanline = 0;
-                        _state.ly = 0;
-                    }
-                    else
-                    {
-                        _state.ly = _state.scanline;
-                    }
-                    break;
-            }
-        }
-
-        if ((_state.lcdStatus & LcdModeFlag::Drawing) == LcdModeFlag::Drawing)
-        {
-            if (!_renderPaused)
-            {
-                // in drawing mode
-                TickDrawing();
-            }
-
-            if (_pixelsRendered == 160)
-            {
-                // enter v-blank
-                _state.lcdStatus &= ~(0x03);
-            }
-        }
-        else if ((_state.lcdStatus & LcdModeFlag::OamSearch) != 0)
-        {
-            TickOamSearch();
-        }
-
-        if ((preserveMode != (_state.lcdStatus & 0x03)) ||
-            (_state.lyCoincident != (_state.ly == _state.lyCompare)))
-        {
-            _state.lyCoincident = (_state.ly == _state.lyCompare);
-            CheckLcdStatusIrq();
-        }
-
-        _state.tick++;
+        return;
     }
+
+    if (_state.sleepCycles > 0)
+    {
+        _state.sleepCycles--;
+        _state.tick++;
+        return;
+    }
+
+    if (_state.scanline < 144)
+    {
+        // currently drawing a visible scanline
+
+        // h-blank doesnt occur at a fixed cycle count
+        // time to finish rendering varies
+        if (_pixelsRendered == 160)
+        {
+            _state.lcdStatus &= ~0x03; // now H-Blank
+            _pixelsRendered = 0;
+            _state.sleepCycles = 456 - _state.tick - 1; // sleep through vblank
+        }
+
+        // handle events that occur at each cycle within scanline
+        switch (_state.tick)
+        {
+            case 3:
+                _state.ly = _state.scanline;
+                break;
+            case 4:
+                _state.lcdStatus |= 0x2; // OAM search mode
+                _state.lcdStatus &= ~0x1;
+                _spritesFound = 0;
+                break;
+            case 84:
+                _state.lcdStatus |= LcdModeFlag::Drawing; // Drawing mode
+                StartRender();
+                _renderPaused = true;
+                break;
+            case 89:
+                _renderPaused = false;
+                break;
+            case 456: // end of scanline
+                _state.tick = 0;
+                _state.scanline++;
+                if (_state.scanline == 144)
+                {
+                    // entering v-blank, LY is updated immediately
+                    _state.ly = _state.scanline;
+                }
+                break;
+        }
+    }
+    else
+    {
+        // currently in v-blank
+        switch (_state.tick) // cycle count within scanline
+        {
+            case 4:
+                if (_state.scanline == 144)
+                {
+                    _state.lcdStatus &= ~0x2;
+                    _state.lcdStatus |= 0x1; // v-blank mode
+                    _windowOffset = 0;
+                    _gameBoy->SetInterruptFlags(IrqFlag::VBlank);
+                    _host->SyncAudio();
+                    _host->PushVideoFrame(_pixelBuffer);
+                }
+                break;
+            case 12:
+                if (_state.scanline == 153)
+                {
+                    // on last line of v-blank this goes to 0 early
+                    _state.ly = 0;
+                }
+                _state.sleepCycles = 443; // sleep until end of scanline
+                break;
+            case 456: // end of v-blank line
+                _state.tick = 0;
+                _state.scanline++;
+                if (_state.scanline == 154)
+                {
+                    // exiting v-blank, starting new frame
+                    _state.scanline = 0;
+                    _state.ly = 0;
+                }
+                else
+                {
+                    _state.ly = _state.scanline;
+                }
+                break;
+        }
+    }
+
+    if ((_state.lcdStatus & LcdModeFlag::Drawing) == LcdModeFlag::Drawing)
+    {
+        if (!_renderPaused)
+        {
+            // in drawing mode
+            TickDrawing();
+        }
+
+        if (_pixelsRendered == 160)
+        {
+            // enter v-blank
+            _state.lcdStatus &= ~(0x03);
+        }
+    }
+    else if ((_state.lcdStatus & LcdModeFlag::OamSearch) != 0)
+    {
+        TickOamSearch();
+    }
+
+    if ((preserveMode != (_state.lcdStatus & 0x03)) ||
+        (_state.lyCoincident != (_state.ly == _state.lyCompare)))
+    {
+        _state.lyCoincident = (_state.ly == _state.lyCompare);
+        CheckLcdStatusIrq();
+    }
+
+    _state.tick++;
 }
 
 void GameBoyPpu::TickBgFetcher()
@@ -507,6 +524,7 @@ void GameBoyPpu::SetLcdPower(bool enable)
         StartRender();
         _state.lyCoincident = (_state.ly == _state.lyCompare);
         CheckLcdStatusIrq();
+        _state.sleepCycles = 0; // wake up
     }
     else // powering off
     {
@@ -530,6 +548,8 @@ void GameBoyPpu::WriteRegister(u16 addr, u8 val)
             }
             return;
         case 0xFF41: // STAT - LCD Status
+            _state.lcdStatus = 0xF8 | (_state.lcdStatus & 0x07); // only on DMG
+            CheckLcdStatusIrq();
             _state.lcdStatus = val & 0xF8; // lower 3 bits are read-only
             CheckLcdStatusIrq();
             return;
@@ -545,6 +565,7 @@ void GameBoyPpu::WriteRegister(u16 addr, u8 val)
             {
                 _state.lyCoincident = (_state.ly == _state.lyCompare);
                 CheckLcdStatusIrq();
+                _state.sleepCycles = 0;
             }
             return;
         case 0xFF47: // BGP

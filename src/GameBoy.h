@@ -138,8 +138,8 @@ public:
     GameBoy(GameBoyModel type, const char *romFile, IHostSystem *host);
     ~GameBoy();
 
+    u64 GetCycleCount() { return _state.cycleCount; }
     u32 *GetPixelBuffer() { return _ppu->GetPixelBuffer(); }
-
     GameBoyModel GetModel() { return _model; }
 
     void ExecuteTwoCycles();
