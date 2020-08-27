@@ -5,6 +5,13 @@
 
 class GameBoy;
 
+enum class ModelSupport
+{
+    None,
+    Optional,
+    Required
+};
+
 struct GameBoyCartHeader
 {
     // reference: https://gbdev.gg8.se/wiki/articles/The_Cartridge_Header
@@ -161,6 +168,21 @@ public:
     virtual u8 ReadRegister(u16 addr) { return 0; }
     virtual void WriteRegister(u16 addr, u8 val) {}
     virtual void RefreshMemoryMap() {}
+
+    ModelSupport GetColorGameBoySupport()
+    {
+        switch (_header.cgbFlag)
+        {
+            case 0x80: return ModelSupport::Optional;
+            case 0xC0: return ModelSupport::Required;
+            default: return ModelSupport::None;
+        }
+    }
+
+    ModelSupport GetSuperGameBoySupport()
+    {
+        return (_header.sgbFlag == 0x03) ? ModelSupport::Optional : ModelSupport::None;
+    }
 };
 
 class GameBoyCartMbc1 : public GameBoyCart

@@ -11,6 +11,7 @@
 
 enum class GameBoyModel
 {
+    Auto,
     GameBoy,
     GameBoyColor,
     SuperGameBoy,
@@ -96,6 +97,30 @@ struct GameBoyState
 
     // select joypad line to read
     u8 joyPadInputSelect;
+
+    // Enable CGB registers, etc.
+    bool isCgb;
+
+    // Flag that indicates if CGB is put into high-speed mode
+    bool cgbHighSpeed;
+
+    // Work RAM bank select (CGB)
+    u8 cgbRamBank;
+
+    // Source address for DMA transfer (CGB)
+    u16 cgbDmaSrcAddr;
+
+    // Destination address for DMA transfer (CGB)
+    u16 cgbDmaDestAddr;
+
+    // Number of bytes left to transfer (CGB), 7-bits
+    u16 cgbDmaLength;
+
+    // Flag that indicates a DMA transfer was completed
+    bool cgbDmaComplete;
+
+    // Indicates that the DMA transfer is operating in HMDA mode
+    bool cgbHdmaMode;
 };
 
 class GameBoy
@@ -103,8 +128,8 @@ class GameBoy
 private:
     static constexpr u32 WorkRamSize = 0x2000; // 8 KB
     static constexpr u32 WorkRamSizeCgb = 0x8000; // 32 KB
-    static constexpr u32 VideoRamSize = 0x4000; // 16 KB
-    static constexpr u32 VideoRamSizeCgb = 0x2000; // 8 KB
+    static constexpr u32 VideoRamSize = 0x2000; // 8 KB
+    static constexpr u32 VideoRamSizeCgb = 0x4000; // 16 KB
 	static constexpr u32 OamRamSize = 0xA0;
 	static constexpr u32 HighRamSize = 0x7F;
 
@@ -141,6 +166,7 @@ public:
     u64 GetCycleCount() { return _state.cycleCount; }
     u32 *GetPixelBuffer() { return _ppu->GetPixelBuffer(); }
     GameBoyModel GetModel() { return _model; }
+    inline bool IsCgb() { return _state.isCgb; }
 
     void ExecuteTwoCycles();
     void Reset();
@@ -172,4 +198,6 @@ public:
 
     // dma
     inline void ExecuteOamDma();
+    inline void ExecuteCgbDma();
+    void ExecuteCgbHdma();
 };

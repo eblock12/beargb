@@ -5,6 +5,13 @@
 
 class GameBoy;
 
+struct CgbPalEntry // 5 bits per component
+{
+    u8 r;
+    u8 g;
+    u8 b;
+};
+
 struct PpuState
 {
     // cycle within the current scanline (range 0-456)
@@ -71,6 +78,19 @@ struct PpuState
 
     // track cycles where no activity is happening (VBlank/HBlank) so can bail out early
     u16 sleepCycles;
+
+    // VRAM bank select (CGB)
+    u8 vramBank;
+
+    // BG Palette (CGB)
+    u8 cgbBgPalAddr;
+    bool cgbIncBgPalAddr;
+    CgbPalEntry cgbBgPal[32];
+
+    // OBJ Palette (CGB)
+    u8 cgbObjPalAddr;
+    bool cgbIncObjPalAddr;
+    CgbPalEntry cgbObjPal[32];
 };
 
 namespace LcdStatusFlags
@@ -182,6 +202,8 @@ private:
     inline void TickOamFetcher();
     inline void MoveToNextSprite();
     inline void CheckLcdStatusIrq();
+
+    
 public:
     GameBoyPpu(GameBoy *gameBoy, IHostSystem *host, u8 *videoRam, u8 *oamRam);
     ~GameBoyPpu();

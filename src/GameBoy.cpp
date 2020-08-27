@@ -7,16 +7,33 @@ GameBoy::GameBoy(GameBoyModel model, const char *romFile, IHostSystem *host)
     _model = model;
     _host = host;
 
-    bool isCgb = (_model == GameBoyModel::GameBoyColor);
-    _workRamSize = isCgb ? GameBoy::WorkRamSizeCgb : GameBoy::WorkRamSize;
-    _videoRamSize = isCgb ? GameBoy::VideoRamSizeCgb : GameBoy::VideoRamSize;
+    _cart.reset(GameBoyCart::CreateFromRomFile(romFile, this));
+
+    // auto model detection
+    if (_model == GameBoyModel::Auto)
+    {
+        ModelSupport cgbSupport = _cart->GetColorGameBoySupport();
+        if ((cgbSupport == ModelSupport::Optional) ||
+            (cgbSupport == ModelSupport::Required))
+        {
+            _model = GameBoyModel::GameBoyColor;
+        }
+        else
+        {
+            _model = GameBoyModel::GameBoy;
+        }
+    }
+
+    _state.isCgb = (_model == GameBoyModel::GameBoyColor);
+
+    _workRamSize = _state.isCgb ? GameBoy::WorkRamSizeCgb : GameBoy::WorkRamSize;
+    _videoRamSize = _state.isCgb ? GameBoy::VideoRamSizeCgb : GameBoy::VideoRamSize;
 
     _workRam = new u8[_workRamSize];
     _highRam = new u8[GameBoy::HighRamSize];
     _videoRam = new u8[_videoRamSize];
     _oamRam = new u8[GameBoy::OamRamSize];
 
-    _cart.reset(GameBoyCart::CreateFromRomFile(romFile, this));
     _cpu.reset(new GameBoyCpu(this));
     _ppu.reset(new GameBoyPpu(this, host, _videoRam, _oamRam));
     _apu.reset(new GameBoyApu(this, host));
@@ -48,14 +65,12 @@ void GameBoy::ExecuteTwoCycles()
 
 void GameBoy::Reset()
 {
-    _state = {};
-
     _cart->Reset();
     _cpu->Reset();
     _ppu->Reset();
 
     MapMemory(_workRam, 0xC000, 0xDFFF, false /*readOnly*/);
-    MapMemory(_workRam, 0xE000, 0xFDFF, false /*readOnly*/);
+    MapMemory(_workRam, 0xE000, 0xFFFF, false /*readOnly*/);
     MapRegisters(0x8000, 0x9FFF, true /*canRead*/, true /*canWrite*/);
     MapRegisters(0xFE00, 0xFFFF, true /*canRead*/, true /*canWrite*/);
 
@@ -175,10 +190,15 @@ u8 GameBoy::ReadRegister(u16 addr)
             case 0xFF40: case 0xFF41: case 0xFF42: case 0xFF43:
             case 0xFF44: case 0xFF45: case 0xFF47: case 0xFF48:
             case 0xFF49: case 0xFF4A: case 0xFF4B:
+            case 0xFF4F: // CGB Bank
+            case 0xFF68: case 0xFF69: case 0xFF6A: case 0xFF6B: // CGB Palette
                 return _ppu->ReadRegister(addr);
             case 0xFF46: // DMA - OAM DMA Transfer
                 return _state.oamDmaSrcAddr;
-
+            case 0xFF55: // CGB DMA/HDMA Length
+                return _state.cgbDmaLength;
+            case 0xFF70: // CGB WRAM Bank Register
+                return _state.cgbRamBank;
         }
     }
     else if (addr >= 0xFE00)
@@ -312,12 +332,69 @@ void GameBoy::WriteRegister(u16 addr, u8 val)
             case 0xFF40: case 0xFF41: case 0xFF42: case 0xFF43:
             case 0xFF45: case 0xFF47: case 0xFF48: case 0xFF49:
             case 0xFF4A: case 0xFF4B:
+            case 0xFF4F: // CGB Bank
+            case 0xFF68: case 0xFF69: case 0xFF6A: case 0xFF6B: // CGB Palette
                 _ppu->WriteRegister(addr, val);
                 return;
-            case 0xFF46: // DMA Transfer and Start Address
+            case 0xFF46: // OAM DMA Transfer and Start Address
                 _state.oamDmaSrcAddr = val;
                 _state.pendingOamDmaStart = true; // start DMA on next cycle
-                //std::cout << "DMA scheduled\n";
+                return;
+            case 0xFF51: // CGB DMA/HDMA Source (High Byte)
+                _state.cgbDmaSrcAddr = (_state.cgbDmaSrcAddr & 0xFF) | (val << 8);
+                return;
+            case 0xFF52: // CGB DMA/HDMA Source (Low Byte)
+                _state.cgbDmaSrcAddr = (_state.cgbDmaSrcAddr & 0xFF00) | (val & 0xF0); // lower 4 bits are ignored
+                return;
+            case 0xFF53: // CGB DMA/HDMA Destination (High Byte)
+                _state.cgbDmaDestAddr = (_state.cgbDmaDestAddr & 0xFF) | (val << 8);
+                return;
+            case 0xFF54: // CGB DMA/HDMA Destination (Low Byte)
+                _state.cgbDmaDestAddr = (_state.cgbDmaDestAddr & 0xFF00) | (val & 0xF0); // lower 4 bits are ignored
+                return;
+            case 0xFF55: // CGB DMA/HDMA Length/Mode/Start
+                _state.cgbDmaLength = val & 0x7F;
+
+                if (val & 0x80) // HDMA mode 
+                {
+                    std::cout << "HDMA: $" << std::hex << _state.cgbDmaSrcAddr << "->" << _state.cgbDmaDestAddr << " Length=" << _state.cgbDmaLength << std::endl;
+                    _state.cgbHdmaMode = true;
+                    _state.cgbDmaComplete = false;
+                }
+                else // Regular DMA
+                {
+                    if (_state.cgbHdmaMode)
+                    {
+                        // starting a regular DMA transfer while in HDMA mode
+                        // will abort the transfer
+                        _state.cgbHdmaMode = false;
+                        _state.cgbDmaComplete = true;
+                    }
+                    else
+                    {
+                        // 4 cycles burned during DMA initialization
+                        ExecuteTwoCycles();
+                        ExecuteTwoCycles();
+
+                        _state.cgbDmaComplete = false;
+                        while (!_state.cgbDmaComplete)
+                        {
+                            ExecuteCgbDma();
+                        }
+                    }
+                }
+                return;
+            case 0xFF70: // CGB WRAM Bank Register
+                if (_state.isCgb)
+                {
+                    _state.cgbRamBank = val & 0x07;
+                    if (_state.cgbRamBank == 0)
+                    {
+                        _state.cgbRamBank = 1;
+                    }
+                    MapMemory(_workRam + (_state.cgbRamBank * 0x1000), 0xD000, 0xDFFF, false /*readOnly*/);
+                    MapMemory(_workRam + (_state.cgbRamBank * 0x1000), 0xF000, 0xFFFF, false /*readOnly*/);
+                }
                 return;
         }
     }
@@ -337,6 +414,45 @@ void GameBoy::WriteRegister(u16 addr, u8 val)
     }
 
     std::cout << "Wrote to unmapped register, addr=" << std::hex << int(addr) << std::endl;
+}
+
+void GameBoy::ExecuteCgbDma()
+{
+    for (int i = 0; i < 16; i++) // DMA operates on 16 byte blocks
+    {
+        u16 addr = 0x8000 | ((_state.cgbDmaDestAddr + i) & 0x1FFF);
+        
+        // this is running on the CPU so burn more machine cycles if in high-speed mode
+        ExecuteTwoCycles();
+        if (_state.cgbHighSpeed)
+        {
+            ExecuteTwoCycles();
+        }
+        Write(addr, Read(_state.cgbDmaSrcAddr + i));
+    }
+
+    _state.cgbDmaDestAddr += 16;
+    _state.cgbDmaSrcAddr += 16;
+    _state.cgbDmaLength--;
+    _state.cgbDmaLength &= 0x7F; // ensure roll over
+
+    if (_state.cgbDmaLength == 0x7F) // if rolled over then transfer is complete
+    {
+        _state.cgbHdmaMode = false;
+        _state.cgbDmaComplete = true;
+    }
+}
+
+void GameBoy::ExecuteCgbHdma()
+{
+    if (_state.cgbHdmaMode)
+    {
+        // 4 cycles burned during DMA startup
+        ExecuteTwoCycles();
+        ExecuteTwoCycles();
+
+        ExecuteCgbDma();
+    }
 }
 
 void GameBoy::MapMemory(u8 *src, u16 start, u16 end, bool readOnly)

@@ -126,7 +126,7 @@ bool SdlApp::IsButtonPressed(HostButton button)
 HostExitCode SdlApp::RunApp(int argc, const char *argv[])
 {
     const char *romFile = (argc > 1) ? argv[1] : "tetris.gb";
-    _gameBoy.reset(new GameBoy(GameBoyModel::GameBoy, romFile, this));
+    _gameBoy.reset(new GameBoy(GameBoyModel::Auto, romFile, this));
 
     SDL_Event event;
     bool running = true;
@@ -134,7 +134,6 @@ HostExitCode SdlApp::RunApp(int argc, const char *argv[])
     while (running)
     {
         _gameBoy->RunOneFrame();
-        //u32 *gameBoyPixels = _gameBoy->GetPixelBuffer();
 
         while (SDL_PollEvent(&event))
         {

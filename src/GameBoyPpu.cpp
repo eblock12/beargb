@@ -56,7 +56,7 @@ void GameBoyPpu::ExecuteCycle()
         {
             _state.lcdStatus &= ~0x03; // now H-Blank
             _pixelsRendered = 0;
-            _state.sleepCycles = 456 - _state.tick - 1; // sleep through vblank
+            _state.sleepCycles = 456 - _state.tick - 1; // sleep through H-Blank
         }
 
         // handle events that occur at each cycle within scanline
@@ -140,8 +140,13 @@ void GameBoyPpu::ExecuteCycle()
 
         if (_pixelsRendered == 160)
         {
-            // enter v-blank
+            // enter h-blank
             _state.lcdStatus &= ~(0x03);
+
+            if (_state.scanline < 143)
+            {
+                _gameBoy->ExecuteCgbHdma();
+            }
         }
     }
     else if ((_state.lcdStatus & LcdModeFlag::OamSearch) != 0)
@@ -162,7 +167,7 @@ void GameBoyPpu::ExecuteCycle()
 void GameBoyPpu::TickBgFetcher()
 {
     u16 tileMapAddr, tileSetAddr;
-    u8 y, tileRow, tileIndex;
+    u8 y, tileRow, tileIndex, tileAttributes, tileY;
 
 
     switch (_fetcherBg.tick++)
@@ -179,14 +184,23 @@ void GameBoyPpu::TickBgFetcher()
                 y = _state.scrollY + _state.scanline;
             }
 
+            // fetch tile index and CGB attributes 
             tileRow = y / 8;
             tileMapAddr += _bgColumn + (tileRow * 32);
             tileIndex = _videoRam[tileMapAddr];
-
-            // TODO: Fetch attributes for CGB, extended tile banks
-
+            tileAttributes = _gameBoy->IsCgb() ? _videoRam[0x2000 | tileMapAddr] : 0;
+            
+            // calculate tile set address
+            y &= 0x07;
+            tileY = (tileAttributes & 0x40) ? (7 - y) : y; // flip vertically
             tileSetAddr = (_state.lcdControl & 0x10) ? 0x0000 : 0x1000;
-            _fetcherBg.tileSetAddr = tileSetAddr + (tileSetAddr ? (s8)tileIndex * 16 : tileIndex * 16) + (y & 0x07) * 2; // 2 bytes per row, 16 bytes per tile
+            tileSetAddr += (tileSetAddr ? 
+                (s8)tileIndex * 16 :
+                tileIndex * 16) + tileY * 2; // 2 bytes per row, 16 bytes per tile
+            tileSetAddr |= (tileAttributes & 0x08) ? 0x2000 : 0x0000;
+
+            _fetcherBg.tileSetAddr = tileSetAddr;
+            _fetcherBg.attributes = tileAttributes;
             break;
 
         case 3: // fetch first tile data byte
@@ -201,17 +215,13 @@ void GameBoyPpu::TickBgFetcher()
         case 7:
             if (_fifoBg.length == 0) // is FIFO ready for new data?
             {
-               // std::cout << "FIFO: ";
-
                 for (int i = 0; i < 8; i++)
                 {
                     _fifoBg.data[i].color =
                         ((_fetcherBg.tileData0 >> (7 - i)) & 0x01) |
                         (((_fetcherBg.tileData1 >> (7 - i)) & 0x01) << 1);
-                    // TODO: Fetch CGB tile attribute
-                    //std::cout << std::hex << int(_fifoBg.data[i]) << ' ';
+                    _fifoBg.data[i].attributes = _fetcherBg.attributes;
                 }
-               // std::cout << std::endl;
 
                 _bgColumn = (_bgColumn + 1) & 0x1F;
                 _fifoBg.position = 0;
@@ -275,6 +285,7 @@ void GameBoyPpu::TickDrawing()
             else
             {
                 u8 bgColorIndex = _fifoBg.data[_fifoBg.position].color;
+                u8 bgAttributes = _fifoBg.data[_fifoBg.position].attributes;
                 u8 spriteColorIndex = _fifoOam.data[_fifoOam.position].color;
                 u8 spriteAttributes = _fifoOam.data[_fifoOam.position].attributes;
 
@@ -290,8 +301,20 @@ void GameBoyPpu::TickDrawing()
                 }
                 else
                 {
-                    u8 color = (_state.bgPal >> (bgColorIndex * 2)) & 0x03;
-                    _pixelBuffer[bufferOffset] = _gbPal[color];
+                    if (_gameBoy->IsCgb())
+                    {
+                        
+                        CgbPalEntry color = _state.cgbObjPal[bgColorIndex | ((bgAttributes & 0x07) << 2)];
+                        _pixelBuffer[bufferOffset] =
+                            color.r << 27 |
+                            color.g << 19 |
+                            color.b << 11;
+                    }
+                    else
+                    {
+                        u8 color = (_state.bgPal >> (bgColorIndex * 2)) & 0x03;
+                        _pixelBuffer[bufferOffset] = _gbPal[color];
+                    }
                 }
             }
         }
@@ -482,6 +505,45 @@ u8 GameBoyPpu::ReadRegister(u16 addr)
             return _state.windowX;
     }
 
+    if (_gameBoy->IsCgb())
+    {
+        switch (addr)
+        {
+            case 0xFF4F: // VRAM Bank Select
+                return _state.vramBank;
+            case 0xFF68: // Background Palette Address
+                return _state.cgbBgPalAddr | (_state.cgbIncBgPalAddr ? 0x80 : 0);
+            case 0xFF69: // Background Palette Data
+                if (_state.cgbBgPalAddr & 0x01)
+                {
+                    return
+                        ((_state.cgbBgPal[_state.cgbBgPalAddr >> 1].g & 0x18) >> 3) |
+                        (_state.cgbBgPal[_state.cgbBgPalAddr >> 1].b << 2);
+                }
+                else
+                {
+                    return
+                        ((_state.cgbBgPal[_state.cgbBgPalAddr >> 1].g & 0x07) << 5) |
+                        _state.cgbBgPal[_state.cgbBgPalAddr >> 1].r;
+                }
+            case 0xFF6A: // Sprite Palette Address
+                return _state.cgbObjPalAddr | (_state.cgbIncObjPalAddr ? 0x80 : 0);
+            case 0xFF6B: // Sprite Palette Data
+                if (_state.cgbObjPalAddr & 0x01)
+                {
+                    return
+                        ((_state.cgbObjPal[_state.cgbObjPalAddr >> 1].g & 0x18) >> 3) |
+                        (_state.cgbObjPal[_state.cgbObjPalAddr >> 1].b << 2);
+                }
+                else
+                {
+                    return
+                        ((_state.cgbObjPal[_state.cgbObjPalAddr >> 1].g & 0x07) << 5) |
+                        _state.cgbObjPal[_state.cgbObjPalAddr >> 1].r;
+                }
+        }
+    }
+
     std::cout << "Read from unmapped PPU register, addr=" << std::hex << int(addr) << std::endl;
     return 0xFF;
 }
@@ -490,6 +552,16 @@ void GameBoyPpu::Reset()
 {
     // bios would normally enable this
     _state.lcdPower = true;
+    
+    // CGB palette is all white
+    for (int i = 0; i < 32; i++)
+    {
+        _state.cgbBgPal[i].r = _state.cgbObjPal[i].r = 0x1F;
+        _state.cgbBgPal[i].g = _state.cgbObjPal[i].g = 0x1F;
+        _state.cgbBgPal[i].b = _state.cgbObjPal[i].b = 0x1F;
+    }
+
+    _state.vramBank = 0;
 }
 
 void GameBoyPpu::StartRender()
@@ -585,6 +657,68 @@ void GameBoyPpu::WriteRegister(u16 addr, u8 val)
             return;
     }
 
+    if (_gameBoy->IsCgb())
+    {
+        switch (addr)
+        {
+            case 0xFF4F: // VRAM Bank Select
+                _state.vramBank = val & 0x01;
+                return;
+            case 0xFF68: // Background Palette Address
+                _state.cgbBgPalAddr = val & 0x3F;
+                _state.cgbIncBgPalAddr = (val & 0x80) != 0;
+                return;
+            case 0xFF69: // Background Palette Data
+                if ((_state.lcdStatus & 0x03) < 3) // Access allowed outside drawing phase
+                {
+                    // XBBBBBGG GGGRRRRR
+                    if ((_state.cgbBgPalAddr & 0x01))// access high byte
+                    {
+                        _state.cgbBgPal[_state.cgbBgPalAddr >> 1].g =
+                            (_state.cgbBgPal[_state.cgbBgPalAddr >> 1].g & 0x07) |
+                            ((val & 0x03) << 3);
+                        _state.cgbBgPal[_state.cgbBgPalAddr >> 1].b = (val >> 2) & 0x1F;
+                    }
+                    else
+                    {
+                        _state.cgbBgPal[_state.cgbBgPalAddr >> 1].r = val & 0x1F;
+                        _state.cgbBgPal[_state.cgbBgPalAddr >> 1].g = 
+                            (_state.cgbBgPal[_state.cgbBgPalAddr >> 1].g & 0x18) |
+                            (val >> 5);
+                    }
+                    _state.cgbBgPalAddr += (_state.cgbIncBgPalAddr) ? 1 : 0;
+                    _state.cgbBgPalAddr &= 0x3F; // wrap
+                }
+                return;
+            case 0xFF6A: // Sprite Palette Address
+                _state.cgbObjPalAddr = val & 0x3F;
+                _state.cgbIncObjPalAddr = (val & 0x80) != 0;
+                return; 
+            case 0xFF6B: // Sprite Palette Data
+                if ((_state.lcdStatus & 0x03) < 3) // Access allowed outside drawing phase
+                {
+                    // XBBBBBGG GGGRRRRR
+                    if (_state.cgbObjPalAddr & 0x01)
+                    {
+                        _state.cgbObjPal[_state.cgbObjPalAddr >> 1].g =
+                            (_state.cgbObjPal[_state.cgbObjPalAddr >> 1].g & 0x07) |
+                            ((val & 0x03) << 3);
+                        _state.cgbObjPal[_state.cgbObjPalAddr >> 1].b = (val >> 2) & 0x1F;
+                    }
+                    else
+                    {
+                        _state.cgbObjPal[_state.cgbObjPalAddr >> 1].r = val & 0x1F;
+                        _state.cgbObjPal[_state.cgbObjPalAddr >> 1].g = 
+                            (_state.cgbObjPal[_state.cgbObjPalAddr >> 1].g & 0x18) |
+                            (val >> 5);
+                    }
+                    _state.cgbObjPalAddr += (_state.cgbIncObjPalAddr) ? 1 : 0;
+                    _state.cgbObjPalAddr &= 0x3F; // wrap
+                }
+                return;
+        }
+    }
+
     std::cout << "Write to unmapped PPU register, addr=" << std::hex << int(addr) << std::endl;
 }
 
@@ -595,12 +729,11 @@ u8 GameBoyPpu::ReadVideoRam(u16 addr)
         // VRAM is disallowed in mode 3
         //std::cout << "Warning! Disallowed VRAM read at addr " << std::hex << int(addr) << std::endl;
         //return 0xFF;
-        return _videoRam[addr & 0x1FFF];
+        return _videoRam[(_state.vramBank << 13) | (addr & 0x1FFF)];
     }
     else
     {
-        // TODO: Allow accessing high CGB video RAM bank
-        return _videoRam[addr & 0x1FFF];
+        return _videoRam[(_state.vramBank << 13) | (addr & 0x1FFF)];
     }
 }
 
@@ -610,12 +743,11 @@ void GameBoyPpu::WriteVideoRam(u16 addr, u8 val)
     {
         // VRAM is disallowed in mode 3
         //std::cout << "Warning! Disallowed VRAM write at addr " << std::hex << int(addr) << std::endl;
-        _videoRam[addr & 0x1FFF] = val;
+        _videoRam[(_state.vramBank << 13) | (addr & 0x1FFF)] = val;
     }
     else
     {
-        // TODO: Allow accessing high CGB video RAM bank
-        _videoRam[addr & 0x1FFF] = val;
+        _videoRam[(_state.vramBank << 13) | (addr & 0x1FFF)] = val;
     }
 }
 
