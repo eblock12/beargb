@@ -25,6 +25,7 @@ GameBoy::GameBoy(GameBoyModel model, const char *romFile, IHostSystem *host)
     }
 
     _state.isCgb = (_model == GameBoyModel::GameBoyColor);
+    _state.cgbHighSpeed = false;
 
     _workRamSize = _state.isCgb ? GameBoy::WorkRamSizeCgb : GameBoy::WorkRamSize;
     _videoRamSize = _state.isCgb ? GameBoy::VideoRamSizeCgb : GameBoy::VideoRamSize;
@@ -52,11 +53,14 @@ GameBoy::~GameBoy()
 void GameBoy::ExecuteTwoCycles()
 {
     _state.cycleCount++;
-    _apu->AddCycles(2);
+    _apu->AddCycles(_state.cgbHighSpeed ? 1 : 2);
     ExecuteTimer();
     _ppu->ExecuteCycle(); // Adjust for CGB
     _state.cycleCount++;
-    _ppu->ExecuteCycle();
+    if (!_state.cgbHighSpeed)
+    {
+        _ppu->ExecuteCycle();
+    }
     if ((_state.cycleCount & 0x3) == 0) // run DMA on 4 cycle intervals
     {
         ExecuteOamDma();
@@ -131,6 +135,12 @@ void GameBoy::RunOneFrame()
     _apu->Execute();
 }
 
+void GameBoy::SwitchSpeed()
+{
+    _state.cgbHighSpeed = !_state.cgbHighSpeed;
+    _state.cgbPrepareSpeedSwitch = false;
+}
+
 u8 GameBoy::Read(u16 addr)
 {
     u8 block = addr >> 8;
@@ -195,6 +205,9 @@ u8 GameBoy::ReadRegister(u16 addr)
                 return _ppu->ReadRegister(addr);
             case 0xFF46: // DMA - OAM DMA Transfer
                 return _state.oamDmaSrcAddr;
+            case 0xFF4D: // CGB Speed Switch
+                return (_state.cgbPrepareSpeedSwitch ? 0x01 : 0) |
+                    (_state.cgbHighSpeed ? 0x80 : 0);
             case 0xFF55: // CGB DMA/HDMA Length
                 return _state.cgbDmaLength;
             case 0xFF70: // CGB WRAM Bank Register
@@ -339,6 +352,12 @@ void GameBoy::WriteRegister(u16 addr, u8 val)
             case 0xFF46: // OAM DMA Transfer and Start Address
                 _state.oamDmaSrcAddr = val;
                 _state.pendingOamDmaStart = true; // start DMA on next cycle
+                return;
+            case 0xFF4D: // CGB Speed Switch
+                if (_state.isCgb)
+                {
+                    _state.cgbPrepareSpeedSwitch = (val & 0x01) != 0;
+                }
                 return;
             case 0xFF51: // CGB DMA/HDMA Source (High Byte)
                 _state.cgbDmaSrcAddr = (_state.cgbDmaSrcAddr & 0xFF) | (val << 8);
@@ -509,7 +528,6 @@ void GameBoy::UnmapRegisters(u16 start, u16 end)
 
 u8 GameBoy::GetJoyPadState()
 {
-    // TODO: Return actual button states
     u8 buttons = 0x0F;
 
     if ((_state.joyPadInputSelect & 0x10) == 0) {
@@ -603,9 +621,9 @@ void GameBoy::ExecuteTimer()
         }
     }
 
-    // TODO: Adjust timings for CGB?
-	if (((newDivider & 0x1000) == 0) &&
-        ((_state.divider & 0x1000) != 0)) {
+    u16 mask = _state.cgbHighSpeed ? 0x2000 : 0x1000;
+	if (((newDivider & mask) == 0) &&
+        ((_state.divider & mask) != 0)) {
 		_apu->TimerTick();
 	}
 

@@ -174,6 +174,7 @@ public:
     inline void SRA_Indirect(u16 addr);
     inline void SRL(u8 &reg);
     inline void SRL_Indirect(u16 addr);
+    inline void STOP();
     inline void SUB(u8 val);
     inline void SWAP(u8 &reg);
     inline void SWAP_Indirect(u16 addr);

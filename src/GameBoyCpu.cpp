@@ -180,6 +180,9 @@ void GameBoyCpu::RunOneInstruction()
             case 0x0F: // RRCA
                 RRCA();
                 break;
+            case 0x10: // STOP
+                STOP();
+                break;
             case 0x11: // LD DE,d16
                 _regDE.SetWord(ReadImmWord());
                 break;
@@ -2208,6 +2211,18 @@ void GameBoyCpu::SRL_Indirect(u16 addr)
     u8 val = Read(addr);
     SRL(val);
     Write(addr, val);
+}
+
+void GameBoyCpu::STOP()
+{
+    if (_gameBoy->IsCgb() && _gameBoy->IsSwitchingSpeed())
+    {
+        _gameBoy->SwitchSpeed();
+    }
+    else
+    {
+        _state.halted = true;
+    }
 }
 
 void GameBoyCpu::SUB(u8 val)

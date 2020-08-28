@@ -104,6 +104,9 @@ struct GameBoyState
     // Flag that indicates if CGB is put into high-speed mode
     bool cgbHighSpeed;
 
+    // Program is requesting to toggle between high/low-speed
+    bool cgbPrepareSpeedSwitch;
+
     // Work RAM bank select (CGB)
     u8 cgbRamBank;
 
@@ -172,6 +175,10 @@ public:
     void Reset();
     void RunCycles(u32 cycles);
     void RunOneFrame();
+    
+    void SwitchSpeed();
+    bool IsSwitchingSpeed() { return _state.cgbPrepareSpeedSwitch; }
+    bool IsHighSpeed() { return _state.cgbHighSpeed; }
 
     u8 Read(u16 addr);
     u8 ReadRegister(u16 addr);
