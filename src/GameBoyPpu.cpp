@@ -184,17 +184,17 @@ void GameBoyPpu::TickBgFetcher()
                 y = _state.scrollY + _state.scanline;
             }
 
-            // fetch tile index and CGB attributes 
+            // fetch tile index and CGB attributes
             tileRow = y / 8;
             tileMapAddr += _bgColumn + (tileRow * 32);
             tileIndex = _videoRam[tileMapAddr];
             tileAttributes = _gameBoy->IsCgb() ? _videoRam[0x2000 | tileMapAddr] : 0;
-            
+
             // calculate tile set address
             y &= 0x07;
             tileY = (tileAttributes & 0x40) ? (7 - y) : y; // flip vertically
             tileSetAddr = (_state.lcdControl & 0x10) ? 0x0000 : 0x1000;
-            tileSetAddr += (tileSetAddr ? 
+            tileSetAddr += (tileSetAddr ?
                 (s8)tileIndex * 16 :
                 tileIndex * 16) + tileY * 2; // 2 bytes per row, 16 bytes per tile
             tileSetAddr |= (tileAttributes & 0x08) ? 0x2000 : 0x0000;
@@ -217,9 +217,10 @@ void GameBoyPpu::TickBgFetcher()
             {
                 for (int i = 0; i < 8; i++)
                 {
+                    u8 x = (_fetcherBg.attributes & 0x20) ? i : (7 - i);
                     _fifoBg.data[i].color =
-                        ((_fetcherBg.tileData0 >> (7 - i)) & 0x01) |
-                        (((_fetcherBg.tileData1 >> (7 - i)) & 0x01) << 1);
+                        ((_fetcherBg.tileData0 >> x) & 0x01) |
+                        (((_fetcherBg.tileData1 >> x) & 0x01) << 1);
                     _fifoBg.data[i].attributes = _fetcherBg.attributes;
                 }
 
@@ -290,25 +291,36 @@ void GameBoyPpu::TickDrawing()
                 u8 spriteAttributes = _fifoOam.data[_fifoOam.position].attributes;
 
                 // check if sprite or BG pixel has priority
-                // TODO: CGB has extra conditions like BG per-tile priority
-                if ((spriteColorIndex != 0) && // sprite pixel is opaque
-                    ((bgColorIndex == 0) || (spriteAttributes & 0x80) == 0x0)) // BG pixel is transparent OR sprite doesn't have priority
+                if ((spriteColorIndex != 0) && // sprite pixel is opaque,
+                    ((bgColorIndex == 0) || // BG pixel is transparent
+                    ((spriteAttributes & 0x80) == 0x0 && (bgAttributes & 0x80) == 0))) // sprite has priority and BG doesn't have priority
                 {
                     // Sprite pixel has priority
-                    u8 palette = (spriteAttributes & 0x10) != 0 ? _state.objPal1 : _state.objPal0;
-                    u8 color = (palette >> (spriteColorIndex * 2)) & 0x03;
-                    _pixelBuffer[bufferOffset] = _gbPal[color];
+
+                    if (_gameBoy->IsCgb())
+                    {
+                        CgbPalEntry color = _state.cgbObjPal[spriteColorIndex | ((spriteAttributes & 0x07) << 2)];
+                        _pixelBuffer[bufferOffset] =
+                            (color.r << 27) |
+                            (color.g << 19) |
+                            (color.b << 11);
+                    }
+                    else
+                    {
+                        u8 palette = (spriteAttributes & 0x10) != 0 ? _state.objPal1 : _state.objPal0;
+                        u8 color = (palette >> (spriteColorIndex * 2)) & 0x03;
+                        _pixelBuffer[bufferOffset] = _gbPal[color];
+                    }
                 }
                 else
                 {
                     if (_gameBoy->IsCgb())
                     {
-                        
-                        CgbPalEntry color = _state.cgbObjPal[bgColorIndex | ((bgAttributes & 0x07) << 2)];
+                        CgbPalEntry color = _state.cgbBgPal[bgColorIndex | ((bgAttributes & 0x07) << 2)];
                         _pixelBuffer[bufferOffset] =
-                            color.r << 27 |
-                            color.g << 19 |
-                            color.b << 11;
+                            (color.r << 27) |
+                            (color.g << 19) |
+                            (color.b << 11);
                     }
                     else
                     {
@@ -441,8 +453,8 @@ void GameBoyPpu::TickOamSearch()
 void GameBoyPpu::MoveToNextSprite()
 {
     // move to next search result from OAM search phase
-    if (_fetchNextSprite && (_state.lcdControl & 0x02))
-        {
+    if (_fetchNextSprite && ((_state.lcdControl & 0x02) || _gameBoy->IsCgb()))
+    {
         for (int i = 0; i < _spritesFound; i++)
         {
             if (_pixelsRendered == ((s16)_spriteX[i] - 8))
@@ -552,7 +564,7 @@ void GameBoyPpu::Reset()
 {
     // bios would normally enable this
     _state.lcdPower = true;
-    
+
     // CGB palette is all white
     for (int i = 0; i < 32; i++)
     {
@@ -669,10 +681,10 @@ void GameBoyPpu::WriteRegister(u16 addr, u8 val)
                 _state.cgbIncBgPalAddr = (val & 0x80) != 0;
                 return;
             case 0xFF69: // Background Palette Data
-                if ((_state.lcdStatus & 0x03) < 3) // Access allowed outside drawing phase
+                //if ((_state.lcdStatus & 0x03) < 3) // Access allowed outside drawing phase
                 {
                     // XBBBBBGG GGGRRRRR
-                    if ((_state.cgbBgPalAddr & 0x01))// access high byte
+                    if (_state.cgbBgPalAddr & 0x01) // access high byte
                     {
                         _state.cgbBgPal[_state.cgbBgPalAddr >> 1].g =
                             (_state.cgbBgPal[_state.cgbBgPalAddr >> 1].g & 0x07) |
@@ -682,20 +694,20 @@ void GameBoyPpu::WriteRegister(u16 addr, u8 val)
                     else
                     {
                         _state.cgbBgPal[_state.cgbBgPalAddr >> 1].r = val & 0x1F;
-                        _state.cgbBgPal[_state.cgbBgPalAddr >> 1].g = 
+                        _state.cgbBgPal[_state.cgbBgPalAddr >> 1].g =
                             (_state.cgbBgPal[_state.cgbBgPalAddr >> 1].g & 0x18) |
                             (val >> 5);
                     }
-                    _state.cgbBgPalAddr += (_state.cgbIncBgPalAddr) ? 1 : 0;
+                    _state.cgbBgPalAddr += _state.cgbIncBgPalAddr ? 1 : 0;
                     _state.cgbBgPalAddr &= 0x3F; // wrap
                 }
                 return;
             case 0xFF6A: // Sprite Palette Address
                 _state.cgbObjPalAddr = val & 0x3F;
                 _state.cgbIncObjPalAddr = (val & 0x80) != 0;
-                return; 
+                return;
             case 0xFF6B: // Sprite Palette Data
-                if ((_state.lcdStatus & 0x03) < 3) // Access allowed outside drawing phase
+                //if ((_state.lcdStatus & 0x03) < 3) // Access allowed outside drawing phase
                 {
                     // XBBBBBGG GGGRRRRR
                     if (_state.cgbObjPalAddr & 0x01)
@@ -708,7 +720,7 @@ void GameBoyPpu::WriteRegister(u16 addr, u8 val)
                     else
                     {
                         _state.cgbObjPal[_state.cgbObjPalAddr >> 1].r = val & 0x1F;
-                        _state.cgbObjPal[_state.cgbObjPalAddr >> 1].g = 
+                        _state.cgbObjPal[_state.cgbObjPalAddr >> 1].g =
                             (_state.cgbObjPal[_state.cgbObjPalAddr >> 1].g & 0x18) |
                             (val >> 5);
                     }

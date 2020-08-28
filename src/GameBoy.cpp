@@ -355,9 +355,9 @@ void GameBoy::WriteRegister(u16 addr, u8 val)
             case 0xFF55: // CGB DMA/HDMA Length/Mode/Start
                 _state.cgbDmaLength = val & 0x7F;
 
-                if (val & 0x80) // HDMA mode 
+                if (val & 0x80) // HDMA mode
                 {
-                    std::cout << "HDMA: $" << std::hex << _state.cgbDmaSrcAddr << "->" << _state.cgbDmaDestAddr << " Length=" << _state.cgbDmaLength << std::endl;
+                    //std::cout << "HDMA: $" << std::hex << _state.cgbDmaSrcAddr << "->" << _state.cgbDmaDestAddr << " Length=" << _state.cgbDmaLength << std::endl;
                     _state.cgbHdmaMode = true;
                     _state.cgbDmaComplete = false;
                 }
@@ -372,6 +372,8 @@ void GameBoy::WriteRegister(u16 addr, u8 val)
                     }
                     else
                     {
+                        //std::cout << "DMA: $" << std::hex << _state.cgbDmaSrcAddr << "->" << _state.cgbDmaDestAddr << " Length=" << _state.cgbDmaLength << std::endl;
+
                         // 4 cycles burned during DMA initialization
                         ExecuteTwoCycles();
                         ExecuteTwoCycles();
@@ -421,7 +423,7 @@ void GameBoy::ExecuteCgbDma()
     for (int i = 0; i < 16; i++) // DMA operates on 16 byte blocks
     {
         u16 addr = 0x8000 | ((_state.cgbDmaDestAddr + i) & 0x1FFF);
-        
+
         // this is running on the CPU so burn more machine cycles if in high-speed mode
         ExecuteTwoCycles();
         if (_state.cgbHighSpeed)

@@ -4,8 +4,8 @@
 #include <iostream>
 
 // GPI internal screen res
-const int SCREEN_WIDTH = 320;
-const int SCREEN_HEIGHT = 240;
+const int SCREEN_WIDTH = 320*3;
+const int SCREEN_HEIGHT = 240*3;
 
 SdlApp::SdlApp()
 {
