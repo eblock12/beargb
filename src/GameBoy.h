@@ -117,7 +117,7 @@ struct GameBoyState
     u16 cgbDmaDestAddr;
 
     // Number of bytes left to transfer (CGB), 7-bits
-    u16 cgbDmaLength;
+    u8 cgbDmaLength;
 
     // Flag that indicates a DMA transfer was completed
     bool cgbDmaComplete;

@@ -389,6 +389,10 @@ void GameBoyPpu::TickOamFetcher()
 
             // TODO: CGB supports alternate sprite tile set bank
             _fetcherOam.tileSetAddr = (spriteTileIndex * 16) + (spriteRow * 2);
+            if (_gameBoy->IsCgb())
+            {
+                _fetcherOam.tileSetAddr += (spriteAttribute & 0x08) ? 0x2000 : 0x0000;
+            }
             _fetcherOam.attributes = spriteAttribute;
             break;
 

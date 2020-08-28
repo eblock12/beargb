@@ -209,7 +209,7 @@ u8 GameBoy::ReadRegister(u16 addr)
                 return (_state.cgbPrepareSpeedSwitch ? 0x01 : 0) |
                     (_state.cgbHighSpeed ? 0x80 : 0);
             case 0xFF55: // CGB DMA/HDMA Length
-                return _state.cgbDmaLength;
+                return _state.cgbDmaLength | ( _state.cgbDmaComplete ? 0x80 : 0);
             case 0xFF70: // CGB WRAM Bank Register
                 return _state.cgbRamBank;
         }
@@ -374,9 +374,9 @@ void GameBoy::WriteRegister(u16 addr, u8 val)
             case 0xFF55: // CGB DMA/HDMA Length/Mode/Start
                 _state.cgbDmaLength = val & 0x7F;
 
-                if (val & 0x80) // HDMA mode
+                if ((val & 0x80) != 0) // HDMA mode
                 {
-                    //std::cout << "HDMA: $" << std::hex << _state.cgbDmaSrcAddr << "->" << _state.cgbDmaDestAddr << " Length=" << _state.cgbDmaLength << std::endl;
+                    //std::cout << "HDMA: $" << std::hex << _state.cgbDmaSrcAddr << "->" << (0x8000 | _state.cgbDmaDestAddr) << " Length=" << int(_state.cgbDmaLength) << std::endl;
                     _state.cgbHdmaMode = true;
                     _state.cgbDmaComplete = false;
                 }
@@ -391,17 +391,16 @@ void GameBoy::WriteRegister(u16 addr, u8 val)
                     }
                     else
                     {
-                        //std::cout << "DMA: $" << std::hex << _state.cgbDmaSrcAddr << "->" << _state.cgbDmaDestAddr << " Length=" << _state.cgbDmaLength << std::endl;
+                       // std::cout << "DMA: $" << std::hex << _state.cgbDmaSrcAddr << "->" << (0x8000 | _state.cgbDmaDestAddr) << " Length=" << _state.cgbDmaLength << std::endl;
 
                         // 4 cycles burned during DMA initialization
                         ExecuteTwoCycles();
                         ExecuteTwoCycles();
 
-                        _state.cgbDmaComplete = false;
-                        while (!_state.cgbDmaComplete)
+                        do
                         {
                             ExecuteCgbDma();
-                        }
+                        } while (_state.cgbDmaLength != 0x7F);
                     }
                 }
                 return;
@@ -441,15 +440,14 @@ void GameBoy::ExecuteCgbDma()
 {
     for (int i = 0; i < 16; i++) // DMA operates on 16 byte blocks
     {
-        u16 addr = 0x8000 | ((_state.cgbDmaDestAddr + i) & 0x1FFF);
-
         // this is running on the CPU so burn more machine cycles if in high-speed mode
         ExecuteTwoCycles();
         if (_state.cgbHighSpeed)
         {
             ExecuteTwoCycles();
         }
-        Write(addr, Read(_state.cgbDmaSrcAddr + i));
+        Write(0x8000 | ((_state.cgbDmaDestAddr + i) & 0x1FFF), 
+            Read(_state.cgbDmaSrcAddr + i));
     }
 
     _state.cgbDmaDestAddr += 16;
@@ -457,8 +455,9 @@ void GameBoy::ExecuteCgbDma()
     _state.cgbDmaLength--;
     _state.cgbDmaLength &= 0x7F; // ensure roll over
 
-    if (_state.cgbDmaLength == 0x7F) // if rolled over then transfer is complete
+    if ((_state.cgbDmaLength == 0x7F) && _state.cgbHdmaMode) // if rolled over then transfer is complete
     {
+        //std::cout << "Finished HDMA" << std::endl;
         _state.cgbHdmaMode = false;
         _state.cgbDmaComplete = true;
     }
