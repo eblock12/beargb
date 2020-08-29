@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <iostream>
 
-#define TRACE
+//#define TRACE
 
 GameBoy::GameBoy(GameBoyModel model, const char *romFile, IHostSystem *host)
 {
@@ -267,7 +267,6 @@ void GameBoy::Write(u16 addr, u8 val)
     }
     else if (_writeMap[block])
     {
-        //std::cout << "Wrote to block=" << int(block) << " addr=" << int(addr & 0xFF) << " val=" << int(val) << std::endl;
         _writeMap[block][addr & 0xFF] = val;
     }
     else

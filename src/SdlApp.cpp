@@ -1,4 +1,5 @@
 #include "SdlApp.h"
+#include "OpenRomMenu.h"
 
 #include <cstring>
 #include <iostream>
@@ -13,6 +14,8 @@ SdlApp::SdlApp()
     _renderer = nullptr;
     _frameTexture = nullptr;
     _audioDevice = 0;
+
+    OpenRomMenu menu(this);
 }
 
 SdlApp::~SdlApp()

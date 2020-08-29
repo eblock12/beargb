@@ -1,5 +1,7 @@
 #pragma once
 
+#include "shared.h"
+
 enum class HostExitCode
 {
     Success = 0,
