@@ -45,7 +45,7 @@ else # !USESDL
 	-include $(CIRCLESTDLIBHOME)/Config.mk
 	include $(CIRCLEHOME)/Rules.mk
 
-	CFLAGS += -I "$(NEWLIBDIR)/include" -I "$(STDDEF_INCPATH)" -I "$(CIRCLESTDLIBHOME)/include" -I$(EXTDIR) -std=c++17 -O3 -DUSE_CIRCLE
+	CFLAGS += -I "$(NEWLIBDIR)/include" -I "$(STDDEF_INCPATH)" -I "$(CIRCLESTDLIBHOME)/include" -I$(EXTDIR) -std=c++17 -Ofast -DUSE_CIRCLE
 
 	LIBS := "$(NEWLIBDIR)/lib/libm.a" "$(NEWLIBDIR)/lib/libc.a" "$(NEWLIBDIR)/lib/libcirclenewlib.a" \
 		$(CIRCLEHOME)/addon/SDCard/libsdcard.a \

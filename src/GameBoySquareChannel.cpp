@@ -2,6 +2,8 @@
 #include "GameBoyApu.h"
 #include <iostream>
 
+constexpr s8 GameBoySquareChannel::DutyTable[4][8];
+
 GameBoySquareChannel::GameBoySquareChannel(GameBoyApu *apu)
 {
     _apu = apu;
@@ -20,7 +22,7 @@ void GameBoySquareChannel::Execute(u32 cycles)
 
     if (_state.enabled)
     {
-        _state.output = DutyTable[_state.dutyCycleSelect][_state.dutyCyclePosition] * _state.volume;
+        _state.output = GameBoySquareChannel::DutyTable[_state.dutyCycleSelect][_state.dutyCyclePosition] * _state.volume;
     }
     else
     {
@@ -55,7 +57,7 @@ void GameBoySquareChannel::TickCounter()
 
 void GameBoySquareChannel::TickFrequencyEnvelope()
 {
-    if (_state.sweepEnable && 
+    if (_state.sweepEnable &&
         (_state.sweepTimer > 0) &&
         (_state.sweepLength > 0))
     {

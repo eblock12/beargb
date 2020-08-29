@@ -2,10 +2,15 @@
 #include <circle/startup.h>
 #include <circle/cputhrottle.h>
 
+constexpr unsigned SoundSampleRate = 44100;
+constexpr unsigned SoundChunkSize = 2000;
+constexpr unsigned int SoundQueueSize = 100; // milliseconds
+
 u8 CircleKernel::_buttonState = 0;
 
 CircleKernel::CircleKernel()
-    : CStdlibAppStdio("BearGB")
+    : CStdlibAppStdio("BearGB"),
+    _pwmSoundDevice(&mInterrupt, SoundSampleRate, SoundChunkSize)
 {
 }
 
@@ -24,6 +29,10 @@ bool CircleKernel::Initialize()
     {
         CGPIOPin(pin, GPIOModeAlternateFunction2);
     }
+
+    // put audio pins into AltMode5
+    CGPIOPin(0x12, GPIOModeAlternateFunction5);
+    CGPIOPin(0x13, GPIOModeAlternateFunction5);
 
     bool result = CStdlibAppStdio::Initialize();
 
@@ -62,36 +71,35 @@ bool CircleKernel::IsButtonPressed(HostButton button)
     return (_buttonState & button) != 0;
 }
 
+void CircleKernel::StartSoundQueue()
+{
+    _pwmSoundDevice.AllocateQueue(SoundQueueSize);
+    _pwmSoundDevice.SetWriteFormat(TSoundFormat::SoundFormatSigned16, 2 /*nChannels*/);
+
+    constexpr size_t BytesPerFrame = 1000 * 2 * sizeof(s16);
+
+    // prefill queue with silence
+    unsigned int queueSizeFrames = _pwmSoundDevice.GetQueueSizeFrames();
+    u8 zeroBuffer[BytesPerFrame] = {};
+    for (unsigned int i = 0; i < queueSizeFrames; i++)
+    {
+        _pwmSoundDevice.Write(zeroBuffer,BytesPerFrame);
+    }
+
+    _pwmSoundDevice.Start();
+}
+
 HostExitCode CircleKernel::RunApp(int argc, const char *argv[])
 {
     bool running = true;
 
-    _gameBoy.reset(new GameBoy(GameBoyModel::GameBoy, "dkl.gb", this));
+    _gameBoy.reset(new GameBoy(GameBoyModel::Auto, "tetris.gb", this));
 
-    CBcmFrameBuffer *frameBuffer = mScreen.GetFrameBuffer();
-    TScreenColor *frameBufferBuffer = (TScreenColor *)(uintptr)frameBuffer->GetBuffer();
-    u32 pitch = frameBuffer->GetPitch() / sizeof(TScreenColor);
-    u32 width = frameBuffer->GetWidth();
-    u32 height = frameBuffer->GetHeight();
+    StartSoundQueue();
 
     while (running)
     {
         _gameBoy->RunOneFrame();
-        u32 *gameBoyPixels = _gameBoy->GetPixelBuffer();
-
-        int cx = width > 160 ? width / 2 - 160 / 2 : 0;
-        int cy = height > 144 ? height / 2 - 144 / 2 : 0;
-
-        for (int x = 0; x < 160; x++)
-        for (int y = 0; y < 144; y++)
-        {
-            u32 gbColor = gameBoyPixels[y * 160 + x];
-            u8 r = gbColor >> 24;
-            u8 g = gbColor >> 16;
-            u8 b = gbColor >> 8;
-
-            frameBufferBuffer[(x + cx) + ((y + cy) * pitch)] = COLOR16(r >> 3, g >> 3, b >> 3);
-        }
     }
 
     return HostExitCode::Success;
@@ -131,5 +139,45 @@ int main(int argc, const char *argv[])
         default:
             halt();
             return EXIT_HALT;
+    }
+}
+
+void CircleKernel::QueueAudio(s16 *buffer, u32 sampleCount)
+{
+    size_t bytesToWrite = sampleCount * 2 * sizeof(s16);
+    _pwmSoundDevice.Write(buffer, bytesToWrite);
+}
+
+void CircleKernel::SyncAudio()
+{
+    // keep the queue around half full
+    unsigned maxFrames = _pwmSoundDevice.GetQueueSizeFrames() / 2;
+
+    while (_pwmSoundDevice.GetQueueFramesAvail() > maxFrames)
+    {
+    }
+}
+
+void CircleKernel::PushVideoFrame(u32 *pixelBuffer)
+{
+    CBcmFrameBuffer *frameBuffer = mScreen.GetFrameBuffer();
+
+    TScreenColor *frameBufferBuffer = (TScreenColor *)(uintptr)frameBuffer->GetBuffer();
+    u32 pitch = frameBuffer->GetPitch() / sizeof(TScreenColor);
+    u32 width = frameBuffer->GetWidth();
+    u32 height = frameBuffer->GetHeight();
+
+    int cx = width > 160 ? width / 2 - 160 / 2 : 0;
+    int cy = height > 144 ? height / 2 - 144 / 2 : 0;
+
+    for (int x = 0; x < 160; x++)
+    for (int y = 0; y < 144; y++)
+    {
+        u32 gbColor = pixelBuffer[y * 160 + x];
+        u8 r = gbColor >> 24;
+        u8 g = gbColor >> 16;
+        u8 b = gbColor >> 8;
+
+        frameBufferBuffer[(x + cx) + ((y + cy) * pitch)] = COLOR16(r >> 3, g >> 3, b >> 3);
     }
 }
