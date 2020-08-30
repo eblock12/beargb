@@ -4,6 +4,8 @@
 #include <memory.h>
 #include <iostream>
 
+//#define TRACE
+
 GameBoyPpu::GameBoyPpu(GameBoy *gameBoy, IHostSystem *host, u8 *videoRam, u8 *oamRam)
 {
     _gameBoy = gameBoy;
@@ -27,7 +29,7 @@ void GameBoyPpu::ExecuteCycle()
 {
     // Timing reference: https://github.com/AntonioND/giibiiadvance/blob/master/docs/TCAGBD.pdf
 
-    u8 preserveMode = _state.lcdStatus & 0x03;
+    u8 preserveMode = _state.lcdMode;
 
     if (!_state.lcdPower)
     {
@@ -66,12 +68,11 @@ void GameBoyPpu::ExecuteCycle()
                 _state.ly = _state.scanline;
                 break;
             case 4:
-                _state.lcdStatus |= 0x2; // OAM search mode
-                _state.lcdStatus &= ~0x1;
+                _state.lcdMode = LcdModeFlag::OamSearch;
                 _spritesFound = 0;
                 break;
             case 84:
-                _state.lcdStatus |= LcdModeFlag::Drawing; // Drawing mode
+                _state.lcdMode = LcdModeFlag::Drawing;
                 StartRender();
                 _renderPaused = true;
                 break;
@@ -97,8 +98,8 @@ void GameBoyPpu::ExecuteCycle()
             case 4:
                 if (_state.scanline == 144)
                 {
-                    _state.lcdStatus &= ~0x2;
-                    _state.lcdStatus |= 0x1; // v-blank mode
+                    _state.lcdMode = LcdModeFlag::VBlank;
+                    // TODO: set irqMode
                     _windowOffset = 0;
                     _gameBoy->SetInterruptFlags(IrqFlag::VBlank);
                     _host->SyncAudio();
@@ -130,7 +131,7 @@ void GameBoyPpu::ExecuteCycle()
         }
     }
 
-    if ((_state.lcdStatus & LcdModeFlag::Drawing) == LcdModeFlag::Drawing)
+    if (_state.lcdMode == LcdModeFlag::Drawing)
     {
         if (!_renderPaused)
         {
@@ -141,7 +142,7 @@ void GameBoyPpu::ExecuteCycle()
         if (_pixelsRendered == 160)
         {
             // enter h-blank
-            _state.lcdStatus &= ~(0x03);
+            _state.lcdMode = LcdModeFlag::HBlank;
 
             if (_state.scanline < 143)
             {
@@ -149,12 +150,12 @@ void GameBoyPpu::ExecuteCycle()
             }
         }
     }
-    else if ((_state.lcdStatus & LcdModeFlag::OamSearch) != 0)
+    else if (_state.lcdMode == LcdModeFlag::OamSearch)
     {
         TickOamSearch();
     }
 
-    if ((preserveMode != (_state.lcdStatus & 0x03)) ||
+    if ((preserveMode != _state.lcdMode) ||
         (_state.lyCoincident != (_state.ly == _state.lyCompare)))
     {
         _state.lyCoincident = (_state.ly == _state.lyCompare);
@@ -480,9 +481,9 @@ void GameBoyPpu::CheckLcdStatusIrq()
     bool triggerStat =
         _state.lcdPower &&
         (((_state.lcdStatus & LcdStatusFlags::CoincidentScanline) && _state.lyCoincident) ||
-        ((_state.lcdStatus & LcdStatusFlags::OamSearch) && (_state.lcdStatus & 3) == LcdModeFlag::OamSearch) ||
-        ((_state.lcdStatus & LcdStatusFlags::VBlank) && (_state.lcdStatus & 3) == LcdModeFlag::VBlank) ||
-        ((_state.lcdStatus & LcdStatusFlags::HBlank) && (_state.lcdStatus & 3) == LcdModeFlag::HBlank));
+        ((_state.lcdStatus & LcdStatusFlags::OamSearch) && (_state.lcdMode == LcdModeFlag::OamSearch)) ||
+        ((_state.lcdStatus & LcdStatusFlags::VBlank) && (_state.lcdMode == LcdModeFlag::VBlank)) ||
+        ((_state.lcdStatus & LcdStatusFlags::HBlank) && (_state.lcdMode == LcdModeFlag::HBlank)));
 
     if (triggerStat && !_state.raisedStatIrq)
     {
@@ -498,8 +499,9 @@ u8 GameBoyPpu::ReadRegister(u16 addr)
         case 0xFF40: // LCD Control
             return _state.lcdControl;
         case 0xFF41: // STAT - LCD Status
-            return (_state.lcdStatus & 0xF7) |
+            return (_state.lcdStatus & 0x78) |
                 0x80 | // upper bit is always 1
+                _state.lcdMode | // cached LCD mode value (lower 2 bits)
                 (_state.lyCoincident ? 0x04 : 0);
         case 0xFF42: // SCY - BG Scroll Y
             return _state.scrollY;
@@ -569,6 +571,8 @@ void GameBoyPpu::Reset()
     // bios would normally enable this
     _state.lcdPower = true;
 
+    _state.lcdMode = LcdModeFlag::HBlank;
+
     // CGB palette is all white
     for (int i = 0; i < 32; i++)
     {
@@ -636,8 +640,12 @@ void GameBoyPpu::WriteRegister(u16 addr, u8 val)
             }
             return;
         case 0xFF41: // STAT - LCD Status
-            _state.lcdStatus = 0xF8 | (_state.lcdStatus & 0x07); // only on DMG
-            CheckLcdStatusIrq();
+            if (!_gameBoy->IsCgb())
+            {
+                // DMG Bug: Writing to FF41 enable STAT for everything momentarily
+                _state.lcdStatus = 0xF8 | (_state.lcdStatus & 0x07); // only on DMG
+                CheckLcdStatusIrq();
+            }
             _state.lcdStatus = val & 0xF8; // lower 3 bits are read-only
             CheckLcdStatusIrq();
             return;
@@ -685,7 +693,7 @@ void GameBoyPpu::WriteRegister(u16 addr, u8 val)
                 _state.cgbIncBgPalAddr = (val & 0x80) != 0;
                 return;
             case 0xFF69: // Background Palette Data
-                //if ((_state.lcdStatus & 0x03) < 3) // Access allowed outside drawing phase
+                if (_state.lcdMode != LcdModeFlag::Drawing)
                 {
                     // XBBBBBGG GGGRRRRR
                     if (_state.cgbBgPalAddr & 0x01) // access high byte
@@ -711,7 +719,7 @@ void GameBoyPpu::WriteRegister(u16 addr, u8 val)
                 _state.cgbIncObjPalAddr = (val & 0x80) != 0;
                 return;
             case 0xFF6B: // Sprite Palette Data
-                //if ((_state.lcdStatus & 0x03) < 3) // Access allowed outside drawing phase
+                if (_state.lcdMode != LcdModeFlag::Drawing)
                 {
                     // XBBBBBGG GGGRRRRR
                     if (_state.cgbObjPalAddr & 0x01)
@@ -735,17 +743,20 @@ void GameBoyPpu::WriteRegister(u16 addr, u8 val)
         }
     }
 
+#ifdef TRACE
     std::cout << "Write to unmapped PPU register, addr=" << std::hex << int(addr) << std::endl;
+#endif
 }
 
 u8 GameBoyPpu::ReadVideoRam(u16 addr)
 {
-    if ((_state.lcdStatus & 0x03) == 0x03)
+    if (_state.lcdMode == LcdModeFlag::Drawing)
     {
         // VRAM is disallowed in mode 3
-        //std::cout << "Warning! Disallowed VRAM read at addr " << std::hex << int(addr) << std::endl;
-        //return 0xFF;
-        return _videoRam[(_state.vramBank << 13) | (addr & 0x1FFF)];
+#ifdef TRACE
+        std::cout << "Warning! Disallowed VRAM read at addr " << std::hex << int(addr) << std::endl;
+#endif
+        return 0xFF;
     }
     else
     {
@@ -755,11 +766,12 @@ u8 GameBoyPpu::ReadVideoRam(u16 addr)
 
 void GameBoyPpu::WriteVideoRam(u16 addr, u8 val)
 {
-    if ((_state.lcdStatus & 0x03) == 0x03)
+    if (_state.lcdMode == LcdModeFlag::Drawing)
     {
         // VRAM is disallowed in mode 3
-        //std::cout << "Warning! Disallowed VRAM write at addr " << std::hex << int(addr) << std::endl;
-        _videoRam[(_state.vramBank << 13) | (addr & 0x1FFF)] = val;
+#ifdef TRACE
+        std::cout << "Warning! Disallowed VRAM write at addr " << std::hex << int(addr) << std::endl
+#endif
     }
     else
     {
@@ -769,25 +781,29 @@ void GameBoyPpu::WriteVideoRam(u16 addr, u8 val)
 
 u8 GameBoyPpu::ReadOamRam(u8 addr)
 {
-    if ((addr < 160) && (((_state.lcdStatus & 0x03) <= 1))) // if in DMA or V-Blank or H-Blank, reads are allowed
+    if ((addr < 160) && (_state.lcdMode <= LcdModeFlag::VBlank)) // if in DMA or V-Blank or H-Blank, reads are allowed
     {
         return _oamRam[addr];
     }
     else
     {
+#ifdef TRACE
         std::cout << "Warning! Disallowed OAM read at addr " << std::hex << int(addr) << std::endl;
+#endif
         return 0xFF;
     }
 }
 
 void GameBoyPpu::WriteOamRam(u8 addr, u8 val, bool dmaBypass)
 {
-    if ((addr < 160) && (dmaBypass || ((_state.lcdStatus & 0x03) <= 1))) // if in DMA or V-Blank or H-Blank, writes are allowed
+    if ((addr < 160) && (dmaBypass || (_state.lcdMode <= LcdModeFlag::VBlank))) // if in DMA or V-Blank or H-Blank, writes are allowed
     {
         _oamRam[addr] = val;
     }
     else
     {
+#ifdef TRACE
         std::cout << "Warning! Disallowed OAM read at addr " << std::hex << int(addr) << std::endl;
+#endif
     }
 }

@@ -20,8 +20,8 @@ OBJS = \
 	$(SRCDIR)/GameBoyApu.o \
 	$(SRCDIR)/GameBoySquareChannel.o \
 	$(SRCDIR)/GameBoyNoiseChannel.o \
-	$(SRCDIR)/GameBoyWaveChannel.o
-
+	$(SRCDIR)/GameBoyWaveChannel.o \
+	$(SRCDIR)/OpenRomMenu.o
 
 ifdef USESDL
 	OBJS += $(SRCDIR)/SdlApp.o
@@ -41,11 +41,17 @@ clean:
 	rm -f $(OBJS)
 
 else # !USESDL
-	OBJS += $(SRCDIR)/CircleKernel.o
+	OPTIMIZE = -Ofast -frename-registers
+
+	OBJS += \
+		$(SRCDIR)/CircleKernel.o \
+
 	-include $(CIRCLESTDLIBHOME)/Config.mk
 	include $(CIRCLEHOME)/Rules.mk
 
-	CFLAGS += -I "$(NEWLIBDIR)/include" -I "$(STDDEF_INCPATH)" -I "$(CIRCLESTDLIBHOME)/include" -I$(EXTDIR) -std=c++17 -Ofast -DUSE_CIRCLE
+	CFLAGS += -I "$(NEWLIBDIR)/include" -I "$(STDDEF_INCPATH)" -I "$(CIRCLESTDLIBHOME)/include" -I$(EXTDIR) -DUSE_CIRCLE
+	CPPFLAGS := $(subst c++14,c++17,$(CPPFLAGS))
+	EXTRACLEAN += src/*.o
 
 	LIBS := "$(NEWLIBDIR)/lib/libm.a" "$(NEWLIBDIR)/lib/libc.a" "$(NEWLIBDIR)/lib/libcirclenewlib.a" \
 		$(CIRCLEHOME)/addon/SDCard/libsdcard.a \

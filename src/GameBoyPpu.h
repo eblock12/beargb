@@ -43,6 +43,9 @@ struct PpuState
     //  Mode 11: Drawing to LCD
     u8 lcdStatus;
 
+    // cache the last 2 bits of the LCD status register
+    u8 lcdMode;
+
     // keep track if the STAT irq was just raised
     bool raisedStatIrq;
 
@@ -203,7 +206,6 @@ private:
     inline void MoveToNextSprite();
     inline void CheckLcdStatusIrq();
 
-    
 public:
     GameBoyPpu(GameBoy *gameBoy, IHostSystem *host, u8 *videoRam, u8 *oamRam);
     ~GameBoyPpu();
