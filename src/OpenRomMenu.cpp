@@ -1,5 +1,6 @@
 #include "OpenRomMenu.h"
 
+#include <dirent.h>
 #include <algorithm>
 #include <iostream>
 #include <set>
@@ -13,6 +14,86 @@ OpenRomMenu::OpenRomMenu(IHostSystem *host)
 }
 
 void OpenRomMenu::RefreshFileList()
+{
+    std::set<std::string> allExts { ".gb", ".gbc" };
+
+    std::vector<RomMenuItem> dirList;
+    std::vector<RomMenuItem> fileList;
+
+    // create special entry back to the parent path if we're not already the root
+    if (_currentPath.root_path() != _currentPath)
+    {
+        RomMenuItem parentItem {
+            .text = "<..>",
+            .path = _currentPath.parent_path(),
+            .type = RomMenuItemType::Directory
+        };
+        dirList.push_back(parentItem);
+    }
+
+    DIR * const dir = opendir(_currentPath.string().c_str());
+    if (dir)
+    {
+        for (;;)
+        {
+            struct dirent const *const dp = readdir(dir);
+            if (dp)
+            {
+                auto entryPath = std::filesystem::path(dp->d_name);
+
+                if (dp->d_type == DT_DIR)
+                {
+                    if (entryPath.filename().string().rfind('.', 0) == std::string::npos)
+                    {
+                        RomMenuItem newItem {
+                            .text = "<"s + entryPath.filename().string() + ">"s,
+                            .path = _currentPath / entryPath,
+                            .type = RomMenuItemType::Directory
+                        };
+                        dirList.push_back(newItem);
+                    }
+                }
+                else if (dp->d_type == DT_REG)
+                {
+                    if (allExts.count(entryPath.extension().string()) > 0)
+                    {
+                        RomMenuItem newItem {
+                            .text = entryPath.filename().string(),
+                            .path = entryPath,
+                            .type = RomMenuItemType::RomFile
+                        };
+                        fileList.push_back(newItem);
+                    }
+                }
+                else
+                {
+                    // Found some unsupported type (symlink, etc.)
+                }
+            }
+            else
+            {
+                // no more entries or error, leave loop
+                break;
+            }
+        }
+    }
+
+    // merge directories and files together
+    _romList.clear();
+    _romList.reserve(dirList.size() + fileList.size());
+    _romList.insert(_romList.end(), dirList.begin(), dirList.end());
+    _romList.insert(_romList.end(), fileList.begin(), fileList.end());
+
+    std::cout << std::string(40, '-') << std::endl;
+    for (auto romEntry : _romList)
+    {
+        std::cout << romEntry.text << std::endl;
+    }
+    std::cout << std::string(40, '-') << std::endl;
+}
+
+/*
+void RefreshFileList2()
 {
     std::set<std::string> allExts { ".gb", ".gbc" };
 
@@ -92,3 +173,4 @@ void OpenRomMenu::RefreshFileList()
     }
     std::cout << std::string(40, '-') << std::endl;
 }
+*/
