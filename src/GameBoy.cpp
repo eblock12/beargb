@@ -438,7 +438,7 @@ void GameBoy::WriteRegister(u16 addr, u8 val)
 
 void GameBoy::ExecuteCgbDma()
 {
-    for (int i = 0; i < 16; i++) // DMA operates on 16 byte blocks
+    for (u8 i = 0; i < 16; i++) // DMA operates on 16 byte blocks
     {
         // this is running on the CPU so burn more machine cycles if in high-speed mode
         ExecuteTwoCycles();
@@ -457,7 +457,6 @@ void GameBoy::ExecuteCgbDma()
 
     if ((_state.cgbDmaLength == 0x7F) && _state.cgbHdmaMode) // if rolled over then transfer is complete
     {
-        //std::cout << "Finished HDMA" << std::endl;
         _state.cgbHdmaMode = false;
         _state.cgbDmaComplete = true;
     }

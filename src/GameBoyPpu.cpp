@@ -41,10 +41,10 @@ void GameBoyPpu::ExecuteCycle()
         return;
     }
 
+    _state.tick++;
     if (_state.sleepCycles > 0)
     {
         _state.sleepCycles--;
-        _state.tick++;
         return;
     }
 
@@ -56,7 +56,7 @@ void GameBoyPpu::ExecuteCycle()
         // time to finish rendering varies
         if (_pixelsRendered == 160)
         {
-            _state.lcdStatus &= ~0x03; // now H-Blank
+            _state.lcdMode = LcdModeFlag::HBlank;
             _pixelsRendered = 0;
             _state.sleepCycles = 456 - _state.tick - 1; // sleep through H-Blank
         }
@@ -80,6 +80,7 @@ void GameBoyPpu::ExecuteCycle()
                 _renderPaused = false;
                 break;
             case 456: // end of scanline
+                _state.sleepCycles = 0;
                 _state.tick = 0;
                 _state.scanline++;
                 if (_state.scanline == 144)
@@ -99,7 +100,6 @@ void GameBoyPpu::ExecuteCycle()
                 if (_state.scanline == 144)
                 {
                     _state.lcdMode = LcdModeFlag::VBlank;
-                    // TODO: set irqMode
                     _windowOffset = 0;
                     _gameBoy->SetInterruptFlags(IrqFlag::VBlank);
                     _host->SyncAudio();
@@ -161,8 +161,6 @@ void GameBoyPpu::ExecuteCycle()
         _state.lyCoincident = (_state.ly == _state.lyCompare);
         CheckLcdStatusIrq();
     }
-
-    _state.tick++;
 }
 
 void GameBoyPpu::TickBgFetcher()
@@ -280,54 +278,47 @@ void GameBoyPpu::TickDrawing()
         if (_pixelsRendered >= 0)
         {
             u16 bufferOffset = _state.scanline * 160 + _pixelsRendered;
-            if (bufferOffset < 0 || bufferOffset >= 23040)
-            {
-                std::cout << "PIXEL BUFFER OUT-OF-RANGE! " << std::dec << int(_pixelsRendered) << "x" << int(_state.scanline) << std::endl;
-            }
-            else
-            {
-                u8 bgColorIndex = _fifoBg.data[_fifoBg.position].color;
-                u8 bgAttributes = _fifoBg.data[_fifoBg.position].attributes;
-                u8 spriteColorIndex = _fifoOam.data[_fifoOam.position].color;
-                u8 spriteAttributes = _fifoOam.data[_fifoOam.position].attributes;
+            u8 bgColorIndex = _fifoBg.data[_fifoBg.position].color;
+            u8 bgAttributes = _fifoBg.data[_fifoBg.position].attributes;
+            u8 spriteColorIndex = _fifoOam.data[_fifoOam.position].color;
+            u8 spriteAttributes = _fifoOam.data[_fifoOam.position].attributes;
 
-                // check if sprite or BG pixel has priority
-                if ((spriteColorIndex != 0) && // sprite pixel is opaque,
-                    ((bgColorIndex == 0) || // BG pixel is transparent
-                    ((spriteAttributes & 0x80) == 0x0 && (bgAttributes & 0x80) == 0))) // sprite has priority and BG doesn't have priority
+            // check if sprite or BG pixel has priority
+            if ((spriteColorIndex != 0) && // sprite pixel is opaque,
+                ((bgColorIndex == 0) || // BG pixel is transparent
+                ((spriteAttributes & 0x80) == 0x0 && (bgAttributes & 0x80) == 0))) // sprite has priority and BG doesn't have priority
+            {
+                // Sprite pixel has priority
+
+                if (_gameBoy->IsCgb())
                 {
-                    // Sprite pixel has priority
-
-                    if (_gameBoy->IsCgb())
-                    {
-                        CgbPalEntry color = _state.cgbObjPal[spriteColorIndex | ((spriteAttributes & 0x07) << 2)];
-                        _pixelBuffer[bufferOffset] =
-                            (color.r << 27) |
-                            (color.g << 19) |
-                            (color.b << 11);
-                    }
-                    else
-                    {
-                        u8 palette = (spriteAttributes & 0x10) != 0 ? _state.objPal1 : _state.objPal0;
-                        u8 color = (palette >> (spriteColorIndex * 2)) & 0x03;
-                        _pixelBuffer[bufferOffset] = _gbPal[color];
-                    }
+                    CgbPalEntry color = _state.cgbObjPal[spriteColorIndex | ((spriteAttributes & 0x07) << 2)];
+                    _pixelBuffer[bufferOffset] =
+                        (color.r << 27) |
+                        (color.g << 19) |
+                        (color.b << 11);
                 }
                 else
                 {
-                    if (_gameBoy->IsCgb())
-                    {
-                        CgbPalEntry color = _state.cgbBgPal[bgColorIndex | ((bgAttributes & 0x07) << 2)];
-                        _pixelBuffer[bufferOffset] =
-                            (color.r << 27) |
-                            (color.g << 19) |
-                            (color.b << 11);
-                    }
-                    else
-                    {
-                        u8 color = (_state.bgPal >> (bgColorIndex * 2)) & 0x03;
-                        _pixelBuffer[bufferOffset] = _gbPal[color];
-                    }
+                    u8 palette = (spriteAttributes & 0x10) != 0 ? _state.objPal1 : _state.objPal0;
+                    u8 color = (palette >> (spriteColorIndex * 2)) & 0x03;
+                    _pixelBuffer[bufferOffset] = _gbPal[color];
+                }
+            }
+            else
+            {
+                if (_gameBoy->IsCgb())
+                {
+                    CgbPalEntry color = _state.cgbBgPal[bgColorIndex | ((bgAttributes & 0x07) << 2)];
+                    _pixelBuffer[bufferOffset] =
+                        (color.r << 27) |
+                        (color.g << 19) |
+                        (color.b << 11);
+                }
+                else
+                {
+                    u8 color = (_state.bgPal >> (bgColorIndex * 2)) & 0x03;
+                    _pixelBuffer[bufferOffset] = _gbPal[color];
                 }
             }
         }
@@ -388,7 +379,6 @@ void GameBoyPpu::TickOamFetcher()
                 }
             }
 
-            // TODO: CGB supports alternate sprite tile set bank
             _fetcherOam.tileSetAddr = (spriteTileIndex * 16) + (spriteRow * 2);
             if (_gameBoy->IsCgb())
             {
@@ -562,7 +552,9 @@ u8 GameBoyPpu::ReadRegister(u16 addr)
         }
     }
 
+#ifdef TRACE
     std::cout << "Read from unmapped PPU register, addr=" << std::hex << int(addr) << std::endl;
+#endif
     return 0xFF;
 }
 
