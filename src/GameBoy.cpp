@@ -66,9 +66,9 @@ void GameBoy::ExecuteTwoCycles()
         ExecuteOamDma();
     }
 
-    if (_state.serialBitCounter && ((_state.cycleCount & _state.serialDivider) == 0))
+    if ((_state.serialBitCounter > 0) && ((_state.cycleCount & _state.serialDivider) == 0))
     {
-        _state.serialTransfer = (_state.serialTransfer << 10) | 0x01;
+        _state.serialTransfer = (_state.serialTransfer << 1) | 0x01;
         _state.serialBitCounter--;
         if (_state.serialBitCounter == 0)
         {
@@ -93,6 +93,7 @@ void GameBoy::Reset()
     _cart->RefreshMemoryMap();
 
     _state.timerDivider = 1024;
+    _state.serialBitCounter = 0;
 
     // skip BIOS by initializing registers to known values
     // this is correct for DMG but not later models
@@ -304,7 +305,8 @@ void GameBoy::WriteRegister(u16 addr, u8 val)
                     _state.serialDivider = 0x1FF;
                 }
                 // start/stop transfer
-                _state.serialControl = ((_state.serialControl & 0x80) != 0) ? 8 : 0;
+                _state.serialBitCounter =
+                    (_state.serialControl & 0x01) && (_state.serialControl & 0x80) ? 8 : 0;
                 return;
             case 0xFF04: // DIV - Divider Register
                 _state.divider = 0;
