@@ -65,6 +65,18 @@ void GameBoy::ExecuteTwoCycles()
     {
         ExecuteOamDma();
     }
+
+    if (_state.serialBitCounter && ((_state.cycleCount & _state.serialDivider) == 0))
+    {
+        _state.serialTransfer = (_state.serialTransfer << 10) | 0x01;
+        _state.serialBitCounter--;
+        if (_state.serialBitCounter == 0)
+        {
+            // transfer is complete
+            _state.serialControl &= 0x7F;
+            SetInterruptFlags(IrqFlag::Serial);
+        }
+    }
 }
 
 void GameBoy::Reset()
@@ -272,8 +284,27 @@ void GameBoy::WriteRegister(u16 addr, u8 val)
                 _state.serialTransfer = val;
                 return;
             case 0xFF02: // SC - Serial control
-                _state.serialControl = val & 0x81; // only bits 0 and 7 are settable
-                // TODO: Pretend to start transfer, raise interrupts, etc?
+                if (_state.isCgb)
+                {
+                    _state.serialControl = val & 0x83; // only bits 0, 1 and 7 are settable
+                    if (_state.cgbHighSpeed)
+                    {
+                        // 524288Hz/16384Hz
+                        _state.serialDivider = (val & 0x02) ? 0x7 : 0xFF;
+                    }
+                    else
+                    {
+                        // 262144Hz/8192Hz
+                        _state.serialDivider = (val & 0x02) ? 0xF : 0x1FF;
+                    }
+                }
+                else
+                {
+                    _state.serialControl = val & 0x81; // only bits 0 and 7 are settable
+                    _state.serialDivider = 0x1FF;
+                }
+                // start/stop transfer
+                _state.serialControl = ((_state.serialControl & 0x80) != 0) ? 8 : 0;
                 return;
             case 0xFF04: // DIV - Divider Register
                 _state.divider = 0;

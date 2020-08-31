@@ -51,10 +51,19 @@ struct GameBoyState
     // Bit 7 - Transfer Start Flag
     //  0: No transfer
     //  1: Start transfer
+    // Bit 1 - Clock Speed (CGB Only)
+    //  0: Normal
+    //  1: Fast
     // Bit 0 - Shift Clock
     //  0: External Clock (500KHz Max.)
     //  1: Internal Clock (8192Hz)
     u8 serialControl;
+
+    // internal counter of how many bits have been sent/received
+    u8 serialBitCounter;
+
+    // how fast the serial clock is running
+    u16 serialDivider;
 
     // Incremented at 16.384KHz. Writing anything sets it to 0.
     u16 divider;
@@ -175,7 +184,7 @@ public:
     void Reset();
     void RunCycles(u32 cycles);
     void RunOneFrame();
-    
+
     void SwitchSpeed();
     bool IsSwitchingSpeed() { return _state.cgbPrepareSpeedSwitch; }
     bool IsHighSpeed() { return _state.cgbHighSpeed; }
