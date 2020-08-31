@@ -1,5 +1,4 @@
 #include "CircleKernel.h"
-#include "OpenRomMenu.h"
 #include <circle/startup.h>
 #include <circle/cputhrottle.h>
 
@@ -93,9 +92,6 @@ void CircleKernel::StartSoundQueue()
 HostExitCode CircleKernel::RunApp(int argc, const char *argv[])
 {
     bool running = true;
-
-    //OpenRomMenu menu(this);
-    //return HostExitCode::Success;
 
     _gameBoy.reset(new GameBoy(GameBoyModel::Auto, "tetris.gb", this));
 

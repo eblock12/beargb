@@ -577,6 +577,16 @@ u8 GameBoy::GetJoyPadState()
     return buttons | (_state.joyPadInputSelect & 0x30) | 0xC0;
 }
 
+void GameBoy::CheckJoyPadChange()
+{
+    u8 newJoyPadState = GetJoyPadState();
+    if (_state.lastJoypadState != newJoyPadState)
+    {
+        SetInterruptFlags(IrqFlag::JoyPad);
+    }
+    _state.lastJoypadState = newJoyPadState;
+}
+
 u8 GameBoy::GetPendingInterrupt()
 {
     u8 interruptPending = _state.interruptEnable & _state.interruptFlags; // if enabled AND requested

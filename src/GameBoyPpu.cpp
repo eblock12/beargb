@@ -104,6 +104,7 @@ void GameBoyPpu::ExecuteCycle()
                     _gameBoy->SetInterruptFlags(IrqFlag::VBlank);
                     _host->SyncAudio();
                     _host->PushVideoFrame(_pixelBuffer);
+                    _gameBoy->CheckJoyPadChange();
                 }
                 break;
             case 12:

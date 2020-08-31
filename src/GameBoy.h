@@ -133,6 +133,9 @@ struct GameBoyState
 
     // Indicates that the DMA transfer is operating in HMDA mode
     bool cgbHdmaMode;
+
+    // Stores the state of the joypad in the previous frame to detect changes
+    u8 lastJoypadState;
 };
 
 class GameBoy
@@ -202,6 +205,7 @@ public:
     void UnmapRegisters(u16 start, u16 end);
 
     u8 GetJoyPadState();
+    void CheckJoyPadChange();
 
     // interrupts
     u8 GetPendingInterrupt();
