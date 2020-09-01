@@ -162,6 +162,10 @@ void GameBoyApu::TimerTick()
 
 u8 GameBoyApu::ReadRegister(u16 addr)
 {
+#ifdef TRACE
+    std::cout << "read_apu: " << std::hex << int(addr) << std::endl;
+#endif
+
     Execute();
 
     switch (addr)
@@ -217,6 +221,10 @@ void GameBoyApu::WriteRegister(u16 addr, u8 val)
 {
     Execute();
 
+#ifdef TRACE
+    std::cout << "write_apu: " << std::hex << int(addr) << "=" << int(val) << std::endl;
+#endif
+
     switch (addr)
     {
         case 0xFF10: // Square 0 Sweep Envelope
@@ -266,5 +274,6 @@ void GameBoyApu::WriteRegister(u16 addr, u8 val)
         case 0xFF38: case 0xFF39: case 0xFF3A: case 0xFF3B:
         case 0xFF3C: case 0xFF3D: case 0xFF3E: case 0xFF3F:
             _wave->WriteWaveRam(addr - 0xFF30, val);
+            break;
     }
 }

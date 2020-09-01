@@ -229,7 +229,7 @@ u8 GameBoy::ReadRegister(u16 addr)
     }
     else if (addr >= 0xFE00)
     {
-        // OAM area
+        return _ppu->ReadOamRam(addr);
     }
     else if (addr >= 0x8000 && addr <= 0x9FFF)
     {
@@ -240,7 +240,9 @@ u8 GameBoy::ReadRegister(u16 addr)
         return _cart->ReadRegister(addr);
     }
 
+#ifdef TRACE
     std::cout << "Read from unmapped register, addr=" << std::hex << int(addr) << std::endl;
+#endif
     return 0xFF;
 }
 
@@ -453,7 +455,8 @@ void GameBoy::WriteRegister(u16 addr, u8 val)
     }
     else if (addr >= 0xFE00)
     {
-        // OAM area
+        _ppu->WriteOamRam(addr, val, false /*dmaBypass*/);
+        return;
     }
     else if (addr >= 0x8000 && addr <= 0x9FFF)
     {
@@ -479,7 +482,7 @@ void GameBoy::ExecuteCgbDma()
         {
             ExecuteTwoCycles();
         }
-        Write(0x8000 | ((_state.cgbDmaDestAddr + i) & 0x1FFF), 
+        Write(0x8000 | ((_state.cgbDmaDestAddr + i) & 0x1FFF),
             Read(_state.cgbDmaSrcAddr + i));
     }
 
