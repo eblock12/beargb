@@ -95,7 +95,7 @@ HostExitCode CircleKernel::RunApp(int argc, const char *argv[])
 {
     bool running = true;
 
-    _gameBoy.reset(new GameBoy(GameBoyModel::Auto, "tetris.gb", this));
+    _gameBoy.reset(new GameBoy(GameBoyModel::Auto, "zelda.gb", this));
 
     StartSoundQueue();
 
@@ -122,7 +122,7 @@ HostExitCode CircleKernel::RunApp(int argc, const char *argv[])
         }
     }
 
-    _gameBoy.release();
+    _gameBoy.reset();
 
     _powerEnablePin.Write(LOW); // powering
 
