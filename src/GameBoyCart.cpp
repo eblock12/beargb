@@ -1,18 +1,23 @@
 #include "GameBoyCart.h"
 #include "GameBoy.h"
 #include <string.h>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <string>
 
 GameBoyCart::GameBoyCart(GameBoy *gameBoy, u8 *romData)
 {
     _gameBoy = gameBoy;
     _romData = romData;
+    _cartRam = nullptr;
     memcpy(&_header, romData + HeaderOffset, sizeof(GameBoyCartHeader));
 }
 
 GameBoyCart::~GameBoyCart()
 {
+    WriteSaveRam();
+
     if (_romData != nullptr)
     {
         delete[] _romData;
@@ -60,34 +65,51 @@ GameBoyCart *GameBoyCart::CreateFromRomFile(const char *filePath, GameBoy *gameB
         std::cout << "CGB Support: " << cgbSupport << std::endl;
         std::cout << "SGB Support: " << (header.sgbFlag == 0x03 ? "Yes" : "No") << std::endl;
 
+        GameBoyCart *newCart;
+
         switch (header.cartType)
         {
             case 0x00: // No mapper (32 KB ROM + 0 KB RAM)
-                return new GameBoyCart(gameBoy, romData);
+                newCart = new GameBoyCart(gameBoy, romData);
+                break;
             case 0x01: // MBC1
             case 0x02: // MBC1+RAM
             case 0x03: // MBC1+RAM+Battery
-                return new GameBoyCartMbc1(gameBoy, romData);
+                newCart = new GameBoyCartMbc1(gameBoy, romData);
+                break;
             case 0x05: // MBC2
             case 0x06: // MBC2+RAM+Battery
-                return new GameBoyCartMbc2(gameBoy, romData);
+                newCart = new GameBoyCartMbc2(gameBoy, romData);
+                break;
             case 0x0F: // MBC3+Timer+Battery
             case 0x10: // MBC3+RAM+Timer+Battery
             case 0x11: // MBC3
             case 0x12: // MBC3+RAM
             case 0x13: // MBC3+RAM+Battery
-                return new GameBoyCartMbc3(gameBoy, romData);
+                newCart = new GameBoyCartMbc3(gameBoy, romData);
+                break;
             case 0x19: // MBC5
             case 0x1A: // MBC5+RAM
             case 0x1B: // MBC5+RAM+Battery
             case 0x1C: // MBC5+Rumble
             case 0x1D: // MBC5+RAM+Rumble
             case 0x1E: // MBC5+RAM+Rumble+Battery
-                return new GameBoyCartMbc5(gameBoy, romData);
+                newCart = new GameBoyCartMbc5(gameBoy, romData);
+                break;
             default:
                 std::cout << "WARNING! Cart mapper type is unsupported" << std::endl;
-                return new GameBoyCart(gameBoy, romData);
+                GameBoyCart *newCart =  new GameBoyCart(gameBoy, romData);
         }
+
+        // determine save ram file name
+        std::filesystem::path romFilePath(filePath);
+        std::string basePath = romFilePath.has_stem() ? romFilePath.stem().string() : "";
+        std::string srmFilePath = basePath + ".srm";
+
+        newCart->SetSaveRamFile(srmFilePath.c_str());
+        newCart->LoadSaveRam();
+
+        return newCart;
     }
     else
     {
@@ -103,10 +125,42 @@ GameBoyCart *GameBoyCart::CreateFromRomFile(const char *filePath, GameBoy *gameB
 
 }
 
-void GameBoyCart::Reset()
+void GameBoyCart::RefreshMemoryMap()
 {
-    // TODO: Support bank swapping, for now just map in the first 32 KB of ROM always
     _gameBoy->MapMemory(_romData, 0x0000, _header.GetRomSize() & 0x8000, true /*readOnly*/);
+}
+
+void GameBoyCart::LoadSaveRam()
+{
+    if (!_header.HasBattery() || (_cartRam == nullptr))
+    {
+        return;
+    }
+
+    std::ifstream inSram(_sramFile, std::ios::in | std::ios::binary);
+    if (inSram.good())
+    {
+        inSram.read((char *)_cartRam, _header.GetRamSize());
+        std::cout << "Loaded save RAM from: " << _sramFile << std::endl;
+    }
+}
+
+void GameBoyCart::WriteSaveRam()
+{
+    if (!_header.HasBattery() || (_cartRam == nullptr))
+    {
+        return;
+    }
+
+    std::ofstream outSram(_sramFile, std::ios::out | std::ios::binary | std::ios::trunc);
+    if (outSram && outSram.good())
+    {
+        outSram.write((char *)_cartRam, _header.GetRamSize());
+        outSram.flush();
+        outSram.close();
+        std::cout << "Wrote save RAM to: " << _sramFile << std::endl;
+        std::cout << _header.GetRamSize() << std::endl;
+    }
 }
 
 void GameBoyCartMbc1::Reset()

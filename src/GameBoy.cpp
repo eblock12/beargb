@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <iostream>
 
+#define TRACE
+
 GameBoy::GameBoy(GameBoyModel model, const char *romFile, IHostSystem *host)
 {
     _model = model;
@@ -260,7 +262,9 @@ void GameBoy::Write(u16 addr, u8 val)
     }
     else
     {
+#ifdef TRACE
         std::cout << "WARNING! Wrote to open bus, addr=" << std::hex << int(addr) << std::endl;
+#endif
     }
 }
 
@@ -469,7 +473,9 @@ void GameBoy::WriteRegister(u16 addr, u8 val)
         return;
     }
 
+#ifdef TRACE
     std::cout << "Wrote to unmapped register, addr=" << std::hex << int(addr) << std::endl;
+#endif
 }
 
 void GameBoy::ExecuteCgbDma()

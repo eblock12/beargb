@@ -153,10 +153,13 @@ struct GameBoyCartHeader
 
 class GameBoyCart
 {
+private:
+    std::string _sramFile;
 protected:
     GameBoy *_gameBoy;
     GameBoyCartHeader _header;
     u8 *_romData;
+    u8 *_cartRam;
 
     GameBoyCart(GameBoy *gameBoy, u8 *romData);
 public:
@@ -164,10 +167,15 @@ public:
 
     virtual ~GameBoyCart();
     static GameBoyCart *CreateFromRomFile(const char *filePath, GameBoy *gameBoy);
-    virtual void Reset();
+    virtual void Reset() {}
     virtual u8 ReadRegister(u16 addr) { return 0; }
     virtual void WriteRegister(u16 addr, u8 val) {}
-    virtual void RefreshMemoryMap() {}
+    virtual void RefreshMemoryMap();
+
+    // persist ram for battery-backed carts
+    void SetSaveRamFile(std::string const& sramFile) { _sramFile = sramFile; }
+    void LoadSaveRam();
+    void WriteSaveRam();
 
     ModelSupport GetColorGameBoySupport()
     {
@@ -192,8 +200,6 @@ private:
     u8 _bank1;
     u8 _bank2;
     u8 _mode;
-
-    u8 *_cartRam;
 
     static constexpr int PrgBankSize = 0x4000; // 16 KB
     static constexpr int RamBankSize = 0x2000; // 8 KB
@@ -220,8 +226,6 @@ private:
     bool _ramGate;
     u8 _romBank;
 
-    u8 *_cartRam;
-
     static constexpr int PrgBankSize = 0x4000; // 16 KB
 public:
     GameBoyCartMbc2(GameBoy *gameBoy, u8 *romData) : GameBoyCart(gameBoy, romData)
@@ -246,8 +250,6 @@ private:
     bool _ramGate;
     u8 _romBank;
     u8 _ramBank;
-
-    u8 *_cartRam;
 
     static constexpr int PrgBankSize = 0x4000; // 16 KB
     static constexpr int RamBankSize = 0x2000; // 8 KB
@@ -274,8 +276,6 @@ private:
     bool _ramGate;
     u16 _romBank;
     u8 _ramBank;
-
-    u8 *_cartRam;
 
     static constexpr int PrgBankSize = 0x4000; // 16 KB
     static constexpr int RamBankSize = 0x2000; // 8 KB
