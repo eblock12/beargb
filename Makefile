@@ -20,7 +20,8 @@ OBJS = \
 	$(SRCDIR)/GameBoyApu.o \
 	$(SRCDIR)/GameBoySquareChannel.o \
 	$(SRCDIR)/GameBoyNoiseChannel.o \
-	$(SRCDIR)/GameBoyWaveChannel.o
+	$(SRCDIR)/GameBoyWaveChannel.o \
+	$(SRCDIR)/OpenRomMenu.o
 
 ifdef USESDL
 	OBJS += $(SRCDIR)/SdlApp.o

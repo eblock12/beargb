@@ -18,12 +18,15 @@ private:
 
     SDL_AudioSpec _audioSpec;
     SDL_AudioDeviceID _audioDevice;
+
+    bool _menuEnable;
 public:
     SdlApp();
     ~SdlApp();
 
     bool Initialize() override;
     bool IsButtonPressed(HostButton button) override;
+    void LoadRomFile(const std::string &romFile) override;
     HostExitCode RunApp(int argc, const char *argv[]) override;
     void QueueAudio(s16 *buffer, u32 sampleCount) override;
     void SyncAudio() override;

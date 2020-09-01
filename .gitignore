@@ -2,6 +2,7 @@
 *.o
 *.a
 *.d
+*.bin
 kernel.elf
 kernel.img
 kernel.lst
@@ -11,5 +12,8 @@ beargb_sdl
 # ROM files
 *.gb
 *.gbc
+
+*.srm
+*.bin
 
 .DS_STORE

@@ -14,8 +14,7 @@ SdlApp::SdlApp()
     _renderer = nullptr;
     _frameTexture = nullptr;
     _audioDevice = 0;
-
-    OpenRomMenu menu(this);
+    _menuEnable = false;
 }
 
 SdlApp::~SdlApp()
@@ -119,11 +118,19 @@ bool SdlApp::IsButtonPressed(HostButton button)
             return _keyboardState[SDL_SCANCODE_BACKSPACE];
         case HostButton::Start:
             return _keyboardState[SDL_SCANCODE_RETURN];
+        case HostButton::Menu:
+            return _keyboardState[SDL_SCANCODE_ESCAPE];
         default:
             return false;
     }
 
     return false;
+}
+
+void SdlApp::LoadRomFile(const std::string &romFile)
+{
+    _gameBoy.reset(new GameBoy(GameBoyModel::Auto, romFile.c_str(), this));
+    _menuEnable = false;
 }
 
 HostExitCode SdlApp::RunApp(int argc, const char *argv[])
@@ -133,10 +140,20 @@ HostExitCode SdlApp::RunApp(int argc, const char *argv[])
 
     SDL_Event event;
     bool running = true;
+    bool menuPressed = false;
+
+    OpenRomMenu menu(this);
 
     while (running)
     {
-        _gameBoy->RunOneFrame();
+        if (_menuEnable)
+        {
+            menu.RunFrame();
+        }
+        else
+        {
+            _gameBoy->RunOneFrame();
+        }
 
         while (SDL_PollEvent(&event))
         {
@@ -149,6 +166,12 @@ HostExitCode SdlApp::RunApp(int argc, const char *argv[])
         }
 
         _keyboardState = SDL_GetKeyboardState(nullptr);
+
+        if (!menuPressed & IsButtonPressed(HostButton::Menu))
+        {
+            _menuEnable = !_menuEnable;
+        }
+        menuPressed = IsButtonPressed(HostButton::Menu);
     }
 
     return HostExitCode::Success;
