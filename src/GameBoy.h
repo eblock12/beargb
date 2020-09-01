@@ -136,6 +136,9 @@ struct GameBoyState
 
     // Stores the state of the joypad in the previous frame to detect changes
     u8 lastJoypadState;
+
+    // BIOS is mapped into memory or not
+    bool biosEnabled;
 };
 
 class GameBoy
@@ -182,6 +185,7 @@ public:
     u32 *GetPixelBuffer() { return _ppu->GetPixelBuffer(); }
     GameBoyModel GetModel() { return _model; }
     inline bool IsCgb() { return _state.isCgb; }
+    bool IsBiosEnabled() { return _state.biosEnabled; }
 
     void ExecuteTwoCycles();
     void Reset();

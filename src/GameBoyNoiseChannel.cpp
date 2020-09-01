@@ -4,6 +4,7 @@
 GameBoyNoiseChannel::GameBoyNoiseChannel(GameBoyApu *apu)
 {
     _apu = apu;
+    _state = {};
 }
 
 GameBoyNoiseChannel::~GameBoyNoiseChannel()

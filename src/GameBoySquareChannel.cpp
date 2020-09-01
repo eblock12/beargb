@@ -7,9 +7,7 @@ constexpr s8 GameBoySquareChannel::DutyTable[4][8];
 GameBoySquareChannel::GameBoySquareChannel(GameBoyApu *apu)
 {
     _apu = apu;
-    _state.enabled = false;
-    _state.dutyCycleSelect = 0;
-    _state.dutyCyclePosition = 0;
+    _state = {};
 }
 
 GameBoySquareChannel::~GameBoySquareChannel()

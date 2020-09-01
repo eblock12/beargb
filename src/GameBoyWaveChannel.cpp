@@ -3,6 +3,7 @@
 GameBoyWaveChannel::GameBoyWaveChannel(GameBoyApu *apu)
 {
     _apu = apu;
+    _state = {};
 }
 
 GameBoyWaveChannel::~GameBoyWaveChannel()

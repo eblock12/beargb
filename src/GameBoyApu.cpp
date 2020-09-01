@@ -15,6 +15,8 @@ GameBoyApu::GameBoyApu(GameBoy *gameBoy, IHostSystem *host)
     _noise.reset(new GameBoyNoiseChannel(this));
     _wave.reset(new GameBoyWaveChannel(this));
 
+    _state = {};
+
     _cycleCount = 0;
     _pendingCycles = 0;
 

@@ -50,7 +50,7 @@ else # !USESDL
 
 	CFLAGS += -I "$(NEWLIBDIR)/include" -I "$(STDDEF_INCPATH)" -I "$(CIRCLESTDLIBHOME)/include" -I$(EXTDIR) -DUSE_CIRCLE
 	CPPFLAGS := $(subst c++14,c++17,$(CPPFLAGS))
-	EXTRACLEAN += src/*.o
+	EXTRACLEAN += src/*.o ext/*.o bios/*.o
 
 	LIBS := "$(NEWLIBDIR)/lib/libm.a" "$(NEWLIBDIR)/lib/libc.a" "$(NEWLIBDIR)/lib/libcirclenewlib.a" \
 		$(CIRCLEHOME)/addon/SDCard/libsdcard.a \

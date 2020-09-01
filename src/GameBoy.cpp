@@ -1,4 +1,5 @@
 #include "GameBoy.h"
+#include "DmgBios.h"
 #include <algorithm>
 #include <iostream>
 
@@ -83,53 +84,62 @@ void GameBoy::ExecuteTwoCycles()
 
 void GameBoy::Reset()
 {
-    _cart->Reset();
-    _cpu->Reset();
-    _ppu->Reset();
-
     MapMemory(_workRam, 0xC000, 0xDFFF, false /*readOnly*/);
     MapMemory(_workRam, 0xE000, 0xFFFF, false /*readOnly*/);
     MapRegisters(0x8000, 0x9FFF, true /*canRead*/, true /*canWrite*/);
     MapRegisters(0xFE00, 0xFFFF, true /*canRead*/, true /*canWrite*/);
 
+    _cart->Reset();
     _cart->RefreshMemoryMap();
+
+    if (!_state.isCgb)
+    {
+        _state.biosEnabled = true;
+        MapMemory((u8*)DmgBios, 0x0000, 0x00FF, true /*readOnly*/);
+    }
 
     _state.timerDivider = 1024;
     _state.serialBitCounter = 0;
 
-    // skip BIOS by initializing registers to known values
-    // this is correct for DMG but not later models
-    WriteRegister(0xFF05, 0x00); // TIMA
-    WriteRegister(0xFF06, 0x00); // TMA
-    WriteRegister(0xFF07, 0x00); // TAC
-    WriteRegister(0xFF10, 0x80); // NR10
-    WriteRegister(0xFF11, 0xBF); // NR11
-    WriteRegister(0xFF12, 0xF3); // NR12
-    WriteRegister(0xFF14, 0xBF); // NR14
-    WriteRegister(0xFF16, 0x3F); // NR21
-    WriteRegister(0xFF17, 0x00); // NR22
-    WriteRegister(0xFF19, 0xBF); // NR24
-    WriteRegister(0xFF1A, 0x7F); // NR30
-    WriteRegister(0xFF1B, 0xFF); // NR31
-    WriteRegister(0xFF1C, 0x9F); // NR32
-    WriteRegister(0xFF1E, 0xBF); // NR33
-    WriteRegister(0xFF20, 0xFF); // NR41
-    WriteRegister(0xFF21, 0x00); // NR42
-    WriteRegister(0xFF22, 0x00); // NR43
-    WriteRegister(0xFF23, 0xBF); // NR30
-    WriteRegister(0xFF24, 0x77); // NR50
-    WriteRegister(0xFF25, 0xF3); // NR51
-    WriteRegister(0xFF26, 0xF1); // NR52
-    WriteRegister(0xFF40, 0x91); // LCDC
-    WriteRegister(0xFF42, 0x00); // SCY
-    WriteRegister(0xFF43, 0x00); // SCX
-    WriteRegister(0xFF45, 0x00); // LYC
-    WriteRegister(0xFF47, 0xFC); // BGP
-    WriteRegister(0xFF48, 0xFF); // OBP0
-    WriteRegister(0xFF49, 0xFF); // OBP1
-    WriteRegister(0xFF4A, 0x00); // WY
-    WriteRegister(0xFF4B, 0x00); // WX
-    WriteRegister(0xFFFF, 0x00); // IE
+    _cpu->Reset();
+    _ppu->Reset();
+
+    if (!_state.biosEnabled)
+    {
+        // skip BIOS by initializing registers to known values
+        // this is correct for DMG but not later models
+        WriteRegister(0xFF05, 0x00); // TIMA
+        WriteRegister(0xFF06, 0x00); // TMA
+        WriteRegister(0xFF07, 0x00); // TAC
+        WriteRegister(0xFF10, 0x80); // NR10
+        WriteRegister(0xFF11, 0xBF); // NR11
+        WriteRegister(0xFF12, 0xF3); // NR12
+        WriteRegister(0xFF14, 0xBF); // NR14
+        WriteRegister(0xFF16, 0x3F); // NR21
+        WriteRegister(0xFF17, 0x00); // NR22
+        WriteRegister(0xFF19, 0xBF); // NR24
+        WriteRegister(0xFF1A, 0x7F); // NR30
+        WriteRegister(0xFF1B, 0xFF); // NR31
+        WriteRegister(0xFF1C, 0x9F); // NR32
+        WriteRegister(0xFF1E, 0xBF); // NR33
+        WriteRegister(0xFF20, 0xFF); // NR41
+        WriteRegister(0xFF21, 0x00); // NR42
+        WriteRegister(0xFF22, 0x00); // NR43
+        WriteRegister(0xFF23, 0xBF); // NR30
+        WriteRegister(0xFF24, 0x77); // NR50
+        WriteRegister(0xFF25, 0xF3); // NR51
+        WriteRegister(0xFF26, 0xF1); // NR52
+        WriteRegister(0xFF40, 0x91); // LCDC
+        WriteRegister(0xFF42, 0x00); // SCY
+        WriteRegister(0xFF43, 0x00); // SCX
+        WriteRegister(0xFF45, 0x00); // LYC
+        WriteRegister(0xFF47, 0xFC); // BGP
+        WriteRegister(0xFF48, 0xFF); // OBP0
+        WriteRegister(0xFF49, 0xFF); // OBP1
+        WriteRegister(0xFF4A, 0x00); // WY
+        WriteRegister(0xFF4B, 0x00); // WX
+        WriteRegister(0xFFFF, 0x00); // IE
+    }
 }
 
 void GameBoy::RunCycles(u32 cycles)
@@ -397,6 +407,13 @@ void GameBoy::WriteRegister(u16 addr, u8 val)
                 {
                     _state.cgbPrepareSpeedSwitch = (val & 0x01) != 0;
                 }
+                return;
+            case 0xFF50: // Disable BIOS
+                if (_state.biosEnabled && (val & 0x01))
+                {
+                    _state.biosEnabled = false;
+                    _cart->RefreshMemoryMap();
+               }
                 return;
             case 0xFF51: // CGB DMA/HDMA Source (High Byte)
                 _state.cgbDmaSrcAddr = (_state.cgbDmaSrcAddr & 0xFF) | (val << 8);

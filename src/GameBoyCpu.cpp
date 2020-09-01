@@ -20,25 +20,28 @@ void GameBoyCpu::Reset()
     _state = {};
 
     // skip the bios and just set expected state
-    _state.pc = 0x0100;
-    _state.sp = 0xFFFE;
-    _state.flags = 0xB0;
+    if (!_gameBoy->IsBiosEnabled())
+    {
+        _state.pc = 0x0100;
+        _state.sp = 0xFFFE;
+        _state.flags = 0xB0;
 
-    // initial register values vary depending on BIOS in each model, some games check this
-    if (_gameBoy->GetModel() == GameBoyModel::GameBoyColor)
-    {
-        _state.a = 0x11;
-        _state.d = 0xFF;
-        _state.e = 0x56;
-        _state.l = 0x0D;
-    }
-    else
-    {
-        _state.a = 0x01;
-        _state.c = 0x13;
-        _state.e = 0xD8;
-        _state.h = 0x01;
-        _state.l = 0x4D;
+        // initial register values vary depending on BIOS in each model, some games check this
+        if (_gameBoy->GetModel() == GameBoyModel::GameBoyColor)
+        {
+            _state.a = 0x11;
+            _state.d = 0xFF;
+            _state.e = 0x56;
+            _state.l = 0x0D;
+        }
+        else
+        {
+            _state.a = 0x01;
+            _state.c = 0x13;
+            _state.e = 0xD8;
+            _state.h = 0x01;
+            _state.l = 0x4D;
+        }
     }
 }
 

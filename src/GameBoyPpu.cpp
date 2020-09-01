@@ -561,9 +561,8 @@ u8 GameBoyPpu::ReadRegister(u16 addr)
 
 void GameBoyPpu::Reset()
 {
-    // bios would normally enable this
-    _state.lcdPower = true;
-
+    _state = {};
+    _state.lcdPower = (!_gameBoy->IsBiosEnabled());
     _state.lcdMode = LcdModeFlag::HBlank;
 
     // CGB palette is all white
