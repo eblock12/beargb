@@ -26,8 +26,8 @@ private:
 
     static void GamePadStatusHandler(unsigned nDeviceIndex, const TGamePadState *pState);
 
-    s16 *audioQueue;
-    u16 audioQueuePos;
+    CGPIOPin _powerButtonPin;
+    CGPIOPin _powerEnablePin;
 public:
     CircleKernel();
 
