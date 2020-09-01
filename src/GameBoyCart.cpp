@@ -98,7 +98,7 @@ GameBoyCart *GameBoyCart::CreateFromRomFile(const char *filePath, GameBoy *gameB
                 break;
             default:
                 std::cout << "WARNING! Cart mapper type is unsupported" << std::endl;
-                GameBoyCart *newCart =  new GameBoyCart(gameBoy, romData);
+                newCart =  new GameBoyCart(gameBoy, romData);
         }
 
         // determine save ram file name
