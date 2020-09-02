@@ -1,4 +1,5 @@
 #include "CircleKernel.h"
+#include "OpenRomMenu.h"
 #include <circle/startup.h>
 #include <circle/cputhrottle.h>
 
@@ -6,7 +7,7 @@ constexpr unsigned SoundSampleRate = 44100;
 constexpr unsigned SoundChunkSize = 2000;
 constexpr unsigned int SoundQueueSize = 100; // milliseconds
 
-u8 CircleKernel::_buttonState = 0;
+u16 CircleKernel::_buttonState = 0;
 
 CircleKernel::CircleKernel()
     : CStdlibAppStdio("BearGB"),
@@ -94,8 +95,12 @@ void CircleKernel::StartSoundQueue()
 HostExitCode CircleKernel::RunApp(int argc, const char *argv[])
 {
     bool running = true;
+    bool menuPressed = false;
 
-    _gameBoy.reset(new GameBoy(GameBoyModel::Auto, "zelda.gb", this));
+    _menuEnable = false;
+    OpenRomMenu menu(this);
+
+    _gameBoy.reset(new GameBoy(GameBoyModel::Auto, "tetris.gb", this));
 
     StartSoundQueue();
 
@@ -105,7 +110,15 @@ HostExitCode CircleKernel::RunApp(int argc, const char *argv[])
 
     while (running)
     {
-        _gameBoy->RunOneFrame();
+        if (_menuEnable)
+        {
+            menu.RunFrame();
+            mScreen.GetFrameBuffer()->WaitForVerticalSync();
+        }
+        else
+        {
+            _gameBoy->RunOneFrame();
+        }
 
         if (_powerButtonPin.Read() == LOW)
         {
@@ -120,6 +133,12 @@ HostExitCode CircleKernel::RunApp(int argc, const char *argv[])
         {
             powerPressedFrames = 0;
         }
+
+        if (!menuPressed & IsButtonPressed(HostButton::Menu))
+        {
+            _menuEnable = !_menuEnable;
+        }
+        menuPressed = IsButtonPressed(HostButton::Menu);
     }
 
     _gameBoy.reset();
@@ -140,6 +159,7 @@ void CircleKernel::GamePadStatusHandler(unsigned nDeviceIndex, const TGamePadSta
     _buttonState |= ((pState->buttons & GamePadButtonB) != 0) || ((pState->buttons & GamePadButtonX) != 0) ? HostButton::B : HostButton::None;
     _buttonState |= (pState->buttons & GamePadButtonSelect) != 0 ? HostButton::Select : HostButton::None;
     _buttonState |= (pState->buttons & GamePadButtonStart) != 0 ? HostButton::Start : HostButton::None;
+    _buttonState |= (pState->buttons & GamePadButtonSelect) && (pState->buttons & GamePadButtonY) ? HostButton::Menu : HostButton::None;
 }
 
 int main(int argc, const char *argv[])
@@ -164,6 +184,12 @@ int main(int argc, const char *argv[])
             halt();
             return EXIT_HALT;
     }
+}
+
+void CircleKernel::LoadRomFile(const char *romFile)
+{
+    _gameBoy.reset(new GameBoy(GameBoyModel::Auto, romFile, this));
+    _menuEnable = false;
 }
 
 void CircleKernel::QueueAudio(s16 *buffer, u32 sampleCount)

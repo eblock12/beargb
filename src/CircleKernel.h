@@ -13,7 +13,7 @@
 class CircleKernel : public CStdlibAppStdio, public IHostSystem
 {
 private:
-    static u8 _buttonState;
+    static u16 _buttonState;
     std::unique_ptr<GameBoy> _gameBoy;
 
     CCPUThrottle _cpuThrottle;
@@ -28,11 +28,14 @@ private:
 
     CGPIOPin _powerButtonPin;
     CGPIOPin _powerEnablePin;
+
+    bool _menuEnable;
 public:
     CircleKernel();
 
     bool Initialize() override;
     bool IsButtonPressed(HostButton button) override;
+    void LoadRomFile(const char *romFile) override;
     HostExitCode RunApp(int argc, const char *argv[]) override;
     virtual void QueueAudio(s16 *buffer, u32 sampleCount) override;
     virtual void SyncAudio() override;

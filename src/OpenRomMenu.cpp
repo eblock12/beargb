@@ -174,7 +174,8 @@ void OpenRomMenu::ProcessInput()
 
     inputState |= _host->IsButtonPressed(HostButton::Down) ? HostButton::Down : 0;
     inputState |= _host->IsButtonPressed(HostButton::Up) ? HostButton::Up : 0;
-    inputState |= _host->IsButtonPressed(HostButton::Start) ? HostButton::Start : 0;
+    inputState |= _host->IsButtonPressed(HostButton::Start) | _host->IsButtonPressed(HostButton::A)
+        ? HostButton::Start : 0;
 
     if (inputState != _lastInputState)
     {
