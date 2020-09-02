@@ -32,6 +32,9 @@ private:
     std::vector<RomMenuItem>::iterator _selectedItem;
     std::filesystem::path _currentPath;
 
+    u16 _lastInputState;
+    unsigned _inputHeldFrames;
+
     u32 *_pixelBuffer;
 
     void DrawFileList();
@@ -39,6 +42,8 @@ private:
     void InvertRect(int x, int y, int width, int height);
     void RefreshFileList();
     void ScrollIntoView(std::vector<RomMenuItem>::iterator item);
+    void ProcessInput();
+    void ProcessButtonPress(u16 inputState);
 public:
     OpenRomMenu(IHostSystem *host);
     ~OpenRomMenu();

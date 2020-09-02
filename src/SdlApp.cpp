@@ -127,9 +127,9 @@ bool SdlApp::IsButtonPressed(HostButton button)
     return false;
 }
 
-void SdlApp::LoadRomFile(const std::string &romFile)
+void SdlApp::LoadRomFile(const char *romFile)
 {
-    _gameBoy.reset(new GameBoy(GameBoyModel::Auto, romFile.c_str(), this));
+    _gameBoy.reset(new GameBoy(GameBoyModel::Auto, romFile, this));
     _menuEnable = false;
 }
 

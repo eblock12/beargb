@@ -26,7 +26,7 @@ public:
 
     bool Initialize() override;
     bool IsButtonPressed(HostButton button) override;
-    void LoadRomFile(const std::string &romFile) override;
+    void LoadRomFile(const char *romFile) override;
     HostExitCode RunApp(int argc, const char *argv[]) override;
     void QueueAudio(s16 *buffer, u32 sampleCount) override;
     void SyncAudio() override;

@@ -5,10 +5,15 @@
 #include <algorithm>
 #include <iostream>
 #include <set>
+#include <string.h>
 
 constexpr unsigned ScreenWidth = 160;
 constexpr unsigned ScreenHeight = 144;
 constexpr unsigned ScreenStride = ScreenWidth * sizeof(u32);
+constexpr unsigned ItemsPerScreen = ScreenHeight / 8 - 1;
+
+constexpr unsigned KeyRepeatStartFrames = 30; // 500 ms until repeat starts
+constexpr unsigned KeyRepeatInterval = 2; // every 10 frames (100 ms)
 
 OpenRomMenu::OpenRomMenu(IHostSystem *host)
 {
@@ -149,10 +154,10 @@ void OpenRomMenu::RefreshFileList()
 
     _selectedItem = _romList.begin();
     _topItem = _romList.begin();
-    _bottomItem = _topItem + (ScreenHeight / 8);
+    _bottomItem = _topItem + ItemsPerScreen;
     if (_bottomItem > _romList.end())
     {
-        _bottomItem = _romList.end();
+        _bottomItem = _romList.end() - 1;
     }
 
     std::cout << std::string(10, '-') << std::endl;
@@ -163,29 +168,61 @@ void OpenRomMenu::RefreshFileList()
     std::cout << std::string(10, '-') << std::endl;
 }
 
-void OpenRomMenu::RunFrame()
+void OpenRomMenu::ProcessInput()
 {
-    if (_host->IsButtonPressed(HostButton::Down))
+    u16 inputState = 0;
+
+    inputState |= _host->IsButtonPressed(HostButton::Down) ? HostButton::Down : 0;
+    inputState |= _host->IsButtonPressed(HostButton::Up) ? HostButton::Up : 0;
+    inputState |= _host->IsButtonPressed(HostButton::Start) ? HostButton::Start : 0;
+
+    if (inputState != _lastInputState)
     {
-        _selectedItem++;
-        if (_selectedItem > _romList.end())
+        _lastInputState = inputState;
+        _inputHeldFrames = 0;
+        ProcessButtonPress(inputState);
+    }
+    else
+    {
+        _inputHeldFrames++;
+
+        if (_inputHeldFrames >= KeyRepeatStartFrames)
         {
-            _selectedItem = _romList.end();
+            if (_inputHeldFrames % KeyRepeatInterval == 0)
+            {
+                ProcessButtonPress(inputState);
+            }
         }
     }
-    else if (_host->IsButtonPressed(HostButton::Up))
+}
+
+void OpenRomMenu::ProcessButtonPress(u16 inputState)
+{
+    if (inputState & HostButton::Down)
     {
-        _selectedItem--;
-        if (_selectedItem < _romList.begin())
+        _selectedItem++;
+        if (_selectedItem >= _romList.end())
         {
             _selectedItem = _romList.begin();
         }
     }
-    
-    if (_host->IsButtonPressed(HostButton::Start))
+    else if (inputState & HostButton::Up)
     {
-        _host->LoadRomFile(std::string(_selectedItem->path));
+        _selectedItem--;
+        if (_selectedItem < _romList.begin())
+        {
+            _selectedItem = _romList.end() - 1;
+        }
     }
+    else if (inputState & HostButton::Start)
+    {
+        _host->LoadRomFile(_selectedItem->path.string().c_str());
+    }
+}
+
+void OpenRomMenu::RunFrame()
+{
+    ProcessInput();
 
     ScrollIntoView(_selectedItem);
 
@@ -201,20 +238,20 @@ void OpenRomMenu::ScrollIntoView(std::vector<RomMenuItem>::iterator item)
     if (_selectedItem < _topItem)
     {
         _topItem = _selectedItem;
-        _bottomItem = _topItem + (ScreenHeight / 8);
+        _bottomItem = _topItem + ItemsPerScreen;
     }
     else if (_selectedItem > _bottomItem)
     {
         _bottomItem = _selectedItem;
-        _topItem = _bottomItem - (ScreenHeight / 8);
+        _topItem = _bottomItem - ItemsPerScreen;
     }
 
+    if (_bottomItem >= _romList.end())
+    {
+        _bottomItem = _romList.end() - 1;
+    }
     if (_topItem < _romList.begin())
     {
         _topItem = _romList.begin();
-    }
-    if (_bottomItem > _romList.end())
-    {
-        _bottomItem = _romList.end();
     }
 }
