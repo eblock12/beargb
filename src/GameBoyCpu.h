@@ -1,5 +1,6 @@
 #pragma once
 
+#include <fstream>
 #include "shared.h"
 
 // prevent cycles
@@ -106,6 +107,9 @@ public:
 
     void Reset();
     void RunOneInstruction();
+
+    void LoadState(std::ifstream &inState);
+    void SaveState(std::ofstream &outState);
 
     inline u8 Read(u16 addr);
     inline u8 ReadImm();

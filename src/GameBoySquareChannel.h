@@ -96,4 +96,7 @@ public:
 
     u8 ReadRegister(u16 addr);
     void WriteRegister(u16 addr, u8 val);
+
+    void LoadState(std::ifstream &inState);
+    void SaveState(std::ofstream &outState);
 };

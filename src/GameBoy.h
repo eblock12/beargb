@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <fstream>
 #include "shared.h"
 #include "IHostSystem.h"
 #include "GameBoyCart.h"
@@ -152,7 +153,6 @@ private:
 	static constexpr u32 HighRamSize = 0x7F;
 
     IHostSystem *_host;
-
     GameBoyModel _model;
     GameBoyState _state = {};
 
@@ -192,6 +192,11 @@ public:
     void RunCycles(u32 cycles);
     void RunOneFrame();
 
+    void SaveState(const char *fileName);
+    void SaveState(std::ofstream &outState);
+    void LoadState(const char *fileName);
+    void LoadState(std::ifstream &inState);
+
     void SwitchSpeed();
     bool IsSwitchingSpeed() { return _state.cgbPrepareSpeedSwitch; }
     bool IsHighSpeed() { return _state.cgbHighSpeed; }
@@ -203,6 +208,7 @@ public:
 
     // maps "src" data into address ranges from start to end, if readOnly then only map into "read" mapping
     // NOTE: start/end must align to 256 byte blocks
+    void RefreshMemoryMap();
     void MapMemory(u8 *src, u16 start, u16 end, bool readOnly);
     void UnmapMemory(u16 start, u16 end);
     void MapRegisters(u16 start, u16 end, bool canRead, bool canWrite);

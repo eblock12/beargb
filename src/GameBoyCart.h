@@ -1,5 +1,6 @@
 #pragma once
 
+#include <fstream>
 #include <string>
 #include "shared.h"
 
@@ -177,6 +178,9 @@ public:
     void LoadSaveRam();
     void WriteSaveRam();
 
+    virtual void LoadState(std::ifstream &inState);
+    virtual void SaveState(std::ofstream &outState);
+
     ModelSupport GetColorGameBoySupport()
     {
         switch (_header.cgbFlag)
@@ -218,6 +222,9 @@ public:
     void RefreshMemoryMap() override;
     u8 ReadRegister(u16 addr) override;
     void WriteRegister(u16 addr, u8 val) override;
+
+    void LoadState(std::ifstream &inState) override;
+    void SaveState(std::ofstream &outState) override;
 };
 
 class GameBoyCartMbc2 : public GameBoyCart
@@ -242,6 +249,9 @@ public:
     void RefreshMemoryMap() override;
     u8 ReadRegister(u16 addr) override;
     void WriteRegister(u16 addr, u8 val) override;
+
+    void LoadState(std::ifstream &inState) override;
+    void SaveState(std::ofstream &outState) override;
 };
 
 class GameBoyCartMbc3 : public GameBoyCart
@@ -268,6 +278,9 @@ public:
     void RefreshMemoryMap() override;
     u8 ReadRegister(u16 addr) override;
     void WriteRegister(u16 addr, u8 val) override;
+
+    void LoadState(std::ifstream &inState) override;
+    void SaveState(std::ofstream &outState) override;
 };
 
 class GameBoyCartMbc5 : public GameBoyCart
@@ -294,4 +307,7 @@ public:
     void RefreshMemoryMap() override;
     u8 ReadRegister(u16 addr) override;
     void WriteRegister(u16 addr, u8 val) override;
+
+    void LoadState(std::ifstream &inState) override;
+    void SaveState(std::ofstream &outState) override;
 };

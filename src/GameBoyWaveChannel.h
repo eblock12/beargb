@@ -1,4 +1,5 @@
 #pragma once
+#include <fstream>
 #include "shared.h"
 
 class GameBoyApu;
@@ -58,4 +59,7 @@ public:
 
     u8 ReadWaveRam(u8 addr);
     void WriteWaveRam(u8 addr, u8 val);
+
+    void LoadState(std::ifstream &inState);
+    void SaveState(std::ofstream &outState);
 };

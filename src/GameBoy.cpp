@@ -1,6 +1,7 @@
 #include "GameBoy.h"
 #include "DmgBios.h"
 #include <algorithm>
+#include <filesystem>
 #include <iostream>
 
 //#define TRACE
@@ -158,6 +159,54 @@ void GameBoy::RunOneFrame()
     RunCycles(154 * 456);
 
     _apu->Execute();
+}
+
+void GameBoy::SaveState(const char *fileName)
+{
+    std::ofstream outState(fileName, std::ios::out | std::ios::binary | std::ios::trunc);
+    if (outState.good())
+    {
+        SaveState(outState);
+    }
+}
+
+void GameBoy::SaveState(std::ofstream &outState)
+{
+    outState.write((char *)_workRam, _workRamSize);
+    outState.write((char *)_highRam, GameBoy::HighRamSize);
+    outState.write((char *)_videoRam, _videoRamSize);
+    outState.write((char *)_oamRam, GameBoy::OamRamSize);
+    outState.write((char *)&_state, sizeof(GameBoyState));
+    
+    _cart->SaveState(outState);
+    _cpu->SaveState(outState);
+    _ppu->SaveState(outState);
+    _apu->SaveState(outState);
+}
+
+void GameBoy::LoadState(const char *fileName)
+{
+    std::ifstream inState(fileName, std::ios::in | std::ios::binary);
+    if (inState.good())
+    {
+        LoadState(inState);
+    }
+}
+
+void GameBoy::LoadState(std::ifstream &inState)
+{
+    inState.read((char *)_workRam, _workRamSize);
+    inState.read((char *)_highRam, GameBoy::HighRamSize);
+    inState.read((char *)_videoRam, _videoRamSize);
+    inState.read((char *)_oamRam, GameBoy::OamRamSize);
+    inState.read((char *)&_state, sizeof(GameBoyState));
+
+    _cart->LoadState(inState);
+    _cpu->LoadState(inState);
+    _ppu->LoadState(inState);
+    _apu->LoadState(inState);
+
+    RefreshMemoryMap();
 }
 
 void GameBoy::SwitchSpeed()
@@ -530,6 +579,27 @@ void GameBoy::ExecuteCgbHdma()
 
         ExecuteCgbDma();
     }
+}
+
+void GameBoy::RefreshMemoryMap()
+{
+    MapMemory(_workRam, 0xC000, 0xDFFF, false /*readOnly*/);
+    MapMemory(_workRam, 0xE000, 0xFFFF, false /*readOnly*/);
+    MapRegisters(0x8000, 0x9FFF, true /*canRead*/, true /*canWrite*/);
+    MapRegisters(0xFE00, 0xFFFF, true /*canRead*/, true /*canWrite*/);
+
+    if (_state.isCgb)
+    {
+        MapMemory(_workRam + (_state.cgbRamBank * 0x1000), 0xD000, 0xDFFF, false /*readOnly*/);
+        MapMemory(_workRam + (_state.cgbRamBank * 0x1000), 0xF000, 0xFFFF, false /*readOnly*/);
+    }
+
+    if (_state.biosEnabled)
+    {
+        MapMemory((u8*)DmgBios, 0x0000, 0x00FF, true /*readOnly*/);
+    }
+
+    _cart->RefreshMemoryMap();
 }
 
 void GameBoy::MapMemory(u8 *src, u16 start, u16 end, bool readOnly)

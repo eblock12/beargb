@@ -279,3 +279,27 @@ void GameBoyApu::WriteRegister(u16 addr, u8 val)
             break;
     }
 }
+
+void GameBoyApu::LoadState(std::ifstream &inState)
+{
+    inState.read((char *)&_state, sizeof(ApuState));
+    inState.read((char *)&_pendingCycles, sizeof(_pendingCycles));
+    inState.read((char *)&_cycleCount, sizeof(_pendingCycles));
+
+    _square0->LoadState(inState);
+    _square1->LoadState(inState);
+    _wave->LoadState(inState);
+    _noise->LoadState(inState);
+}
+
+void GameBoyApu::SaveState(std::ofstream &outState)
+{
+    outState.write((char *)&_state, sizeof(ApuState));
+    outState.write((char *)&_pendingCycles, sizeof(_pendingCycles));
+    outState.write((char *)&_cycleCount, sizeof(_pendingCycles));
+
+    _square0->SaveState(outState);
+    _square1->SaveState(outState);
+    _wave->SaveState(outState);
+    _noise->SaveState(outState);
+}

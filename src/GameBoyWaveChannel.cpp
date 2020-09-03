@@ -126,3 +126,13 @@ void GameBoyWaveChannel::WriteWaveRam(u8 addr, u8 val)
 {
     _state.waveRam[addr & 0x0F] = val;
 }
+
+void GameBoyWaveChannel::LoadState(std::ifstream &inState)
+{
+    inState.read((char *)&_state, sizeof(WaveChannelState));
+}
+
+void GameBoyWaveChannel::SaveState(std::ofstream &outState)
+{
+    outState.write((char *)&_state, sizeof(WaveChannelState));
+}

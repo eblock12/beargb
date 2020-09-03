@@ -799,3 +799,57 @@ void GameBoyPpu::WriteOamRam(u8 addr, u8 val, bool dmaBypass)
 #endif
     }
 }
+
+void GameBoyPpu::LoadState(std::ifstream &inState)
+{
+    inState.read((char *)&_state, sizeof(PpuState));
+
+    inState.read((char *)&_fifoBg, sizeof(PixelFifo));
+    inState.read((char *)&_fifoOam, sizeof(PixelFifo));
+    inState.read((char *)&_fetcherBg, sizeof(PpuFetcher));
+    inState.read((char *)&_fetcherOam, sizeof(PpuFetcher));
+
+    inState.read((char *)&_windowEnable, sizeof(_windowEnable));
+    inState.read((char *)&_insideWindow, sizeof(_insideWindow));
+    inState.read((char *)&_windowStartX, sizeof(_windowStartX));
+    inState.read((char *)&_windowStartY, sizeof(_windowStartY));
+    inState.read((char *)&_windowOffset, sizeof(_windowOffset));
+
+    inState.read((char *)&_fetchNextSprite, sizeof(_fetchNextSprite));
+    inState.read((char *)&_fetchOamAddr, sizeof(_fetchOamAddr));
+    inState.read((char *)_spriteX, sizeof(_spriteX));
+    inState.read((char *)_spriteAddr, sizeof(_spriteAddr));
+    inState.read((char *)&_spritesFound, sizeof(_spritesFound));
+
+    inState.read((char *)&_renderPaused, sizeof(_renderPaused));
+    inState.read((char *)&_pixelsRendered, sizeof(_pixelsRendered));
+    inState.read((char *)&_bgColumn, sizeof(_bgColumn));
+    inState.read((char *)_pixelBuffer, 160 * 144 * sizeof(u32));
+}
+
+void GameBoyPpu::SaveState(std::ofstream &outState)
+{
+    outState.write((char *)&_state, sizeof(PpuState));
+
+    outState.write((char *)&_fifoBg, sizeof(PixelFifo));
+    outState.write((char *)&_fifoOam, sizeof(PixelFifo));
+    outState.write((char *)&_fetcherBg, sizeof(PpuFetcher));
+    outState.write((char *)&_fetcherOam, sizeof(PpuFetcher));
+
+    outState.write((char *)&_windowEnable, sizeof(_windowEnable));
+    outState.write((char *)&_insideWindow, sizeof(_insideWindow));
+    outState.write((char *)&_windowStartX, sizeof(_windowStartX));
+    outState.write((char *)&_windowStartY, sizeof(_windowStartY));
+    outState.write((char *)&_windowOffset, sizeof(_windowOffset));
+
+    outState.write((char *)&_fetchNextSprite, sizeof(_fetchNextSprite));
+    outState.write((char *)&_fetchOamAddr, sizeof(_fetchOamAddr));
+    outState.write((char *)_spriteX, sizeof(_spriteX));
+    outState.write((char *)_spriteAddr, sizeof(_spriteAddr));
+    outState.write((char *)&_spritesFound, sizeof(_spritesFound));
+
+    outState.write((char *)&_renderPaused, sizeof(_renderPaused));
+    outState.write((char *)&_pixelsRendered, sizeof(_pixelsRendered));
+    outState.write((char *)&_bgColumn, sizeof(_bgColumn));
+    outState.write((char *)_pixelBuffer, 160 * 144 * sizeof(u32));
+}

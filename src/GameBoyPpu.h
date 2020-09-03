@@ -1,5 +1,6 @@
 #pragma once
 
+#include <fstream>
 #include "shared.h"
 #include "IHostSystem.h"
 
@@ -205,7 +206,6 @@ private:
     inline void TickOamFetcher();
     inline void MoveToNextSprite();
     inline void CheckLcdStatusIrq();
-
 public:
     GameBoyPpu(GameBoy *gameBoy, IHostSystem *host, u8 *videoRam, u8 *oamRam);
     ~GameBoyPpu();
@@ -222,4 +222,7 @@ public:
     void WriteOamRam(u8 addr, u8 val, bool dmaBypass);
 
     u32 *GetPixelBuffer() { return _pixelBuffer; }
+
+    void LoadState(std::ifstream &inState);
+    void SaveState(std::ofstream &outState);
 };

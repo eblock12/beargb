@@ -13,7 +13,7 @@ constexpr unsigned ScreenStride = ScreenWidth * sizeof(u32);
 constexpr unsigned ItemsPerScreen = ScreenHeight / 8 - 1;
 
 constexpr unsigned KeyRepeatStartFrames = 30; // 500 ms until repeat starts
-constexpr unsigned KeyRepeatInterval = 2; // every 10 frames (100 ms)
+constexpr unsigned KeyRepeatInterval = 1; // every 1 frames (16 ms)
 
 OpenRomMenu::OpenRomMenu(IHostSystem *host)
 {

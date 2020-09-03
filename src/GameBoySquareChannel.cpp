@@ -231,3 +231,13 @@ void GameBoySquareChannel::WriteRegister(u16 addr, u8 val)
             break;
     }
 }
+
+void GameBoySquareChannel::LoadState(std::ifstream &inState)
+{
+    inState.read((char *)&_state, sizeof(SquareChannelState));
+}
+
+void GameBoySquareChannel::SaveState(std::ofstream &outState)
+{
+    outState.write((char *)&_state, sizeof(SquareChannelState));
+}

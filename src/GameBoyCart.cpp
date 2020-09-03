@@ -2,7 +2,6 @@
 #include "GameBoy.h"
 #include <string.h>
 #include <filesystem>
-#include <fstream>
 #include <iostream>
 #include <string>
 
@@ -163,6 +162,22 @@ void GameBoyCart::WriteSaveRam()
     }
 }
 
+void GameBoyCart::LoadState(std::ifstream &inState)
+{
+    if (_cartRam)
+    {
+        inState.read((char *)_cartRam, _header.GetRamSize());
+    }
+}
+
+void GameBoyCart::SaveState(std::ofstream &outState)
+{
+    if (_cartRam)
+    {
+        outState.write((char *)_cartRam, _header.GetRamSize());
+    }
+}
+
 void GameBoyCartMbc1::Reset()
 {
     _ramGate = false;
@@ -236,6 +251,24 @@ void GameBoyCartMbc1::WriteRegister(u16 addr, u8 val)
     }
 
     RefreshMemoryMap();
+}
+
+void GameBoyCartMbc1::LoadState(std::ifstream &inState)
+{
+    GameBoyCart::LoadState(inState);
+    inState.read((char*)&_ramGate, sizeof(bool));
+    inState.read((char*)&_bank1, sizeof(u8));
+    inState.read((char*)&_bank2, sizeof(u8));
+    inState.read((char*)&_mode, sizeof(u8));
+}
+
+void GameBoyCartMbc1::SaveState(std::ofstream &outState)
+{
+    GameBoyCart::SaveState(outState);
+    outState.write((char*)&_ramGate, sizeof(bool));
+    outState.write((char*)&_bank1, sizeof(u8));
+    outState.write((char*)&_bank2, sizeof(u8));
+    outState.write((char*)&_mode, sizeof(u8));
 }
 
 void GameBoyCartMbc2::Reset()
@@ -316,6 +349,20 @@ void GameBoyCartMbc2::WriteRegister(u16 addr, u8 val)
     RefreshMemoryMap();
 }
 
+void GameBoyCartMbc2::LoadState(std::ifstream &inState)
+{
+    GameBoyCart::LoadState(inState);
+    inState.read((char*)&_ramGate, sizeof(bool));
+    inState.read((char*)&_romBank, sizeof(u8));
+}
+
+void GameBoyCartMbc2::SaveState(std::ofstream &outState)
+{
+    GameBoyCart::SaveState(outState);
+    outState.write((char*)&_ramGate, sizeof(bool));
+    outState.write((char*)&_romBank, sizeof(u8));
+}
+
 void GameBoyCartMbc3::Reset()
 {
     _ramGate = false;
@@ -391,6 +438,22 @@ void GameBoyCartMbc3::WriteRegister(u16 addr, u8 val)
     RefreshMemoryMap();
 }
 
+void GameBoyCartMbc3::LoadState(std::ifstream &inState)
+{
+    GameBoyCart::LoadState(inState);
+    inState.read((char*)&_ramGate, sizeof(bool));
+    inState.read((char*)&_romBank, sizeof(u8));
+    inState.read((char*)&_ramBank, sizeof(u8));
+}
+
+void GameBoyCartMbc3::SaveState(std::ofstream &outState)
+{
+    GameBoyCart::SaveState(outState);
+    outState.write((char*)&_ramGate, sizeof(bool));
+    outState.write((char*)&_romBank, sizeof(u8));
+    outState.write((char*)&_ramBank, sizeof(u8));
+}
+
 void GameBoyCartMbc5::Reset()
 {
     _ramGate = false;
@@ -461,4 +524,20 @@ void GameBoyCartMbc5::WriteRegister(u16 addr, u8 val)
     }
 
     RefreshMemoryMap();
+}
+
+void GameBoyCartMbc5::LoadState(std::ifstream &inState)
+{
+    GameBoyCart::LoadState(inState);
+    inState.read((char*)&_ramGate, sizeof(bool));
+    inState.read((char*)&_romBank, sizeof(u16));
+    inState.read((char*)&_ramBank, sizeof(u8));
+}
+
+void GameBoyCartMbc5::SaveState(std::ofstream &outState)
+{
+    GameBoyCart::SaveState(outState);
+    outState.write((char*)&_ramGate, sizeof(bool));
+    outState.write((char*)&_romBank, sizeof(u16));
+    outState.write((char*)&_ramBank, sizeof(u8));
 }

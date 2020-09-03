@@ -45,6 +45,16 @@ void GameBoyCpu::Reset()
     }
 }
 
+void GameBoyCpu::LoadState(std::ifstream &inState)
+{
+    inState.read((char *)&_state, sizeof(CpuState));
+}
+
+void GameBoyCpu::SaveState(std::ofstream &outState)
+{
+    outState.write((char *)&_state, sizeof(CpuState));
+}
+
 void GameBoyCpu::RunOneInstruction()
 {
     u8 pendingInterrupt = _gameBoy->GetPendingInterrupt();

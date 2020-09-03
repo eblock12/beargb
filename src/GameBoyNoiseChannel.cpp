@@ -175,3 +175,13 @@ void GameBoyNoiseChannel::WriteRegister(u16 addr, u8 val)
             break;
     }
 }
+
+void GameBoyNoiseChannel::LoadState(std::ifstream &inState)
+{
+    inState.read((char *)&_state, sizeof(NoiseChannelState));
+}
+
+void GameBoyNoiseChannel::SaveState(std::ofstream &outState)
+{
+    outState.write((char *)&_state, sizeof(NoiseChannelState));
+}
