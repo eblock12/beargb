@@ -177,7 +177,7 @@ void GameBoy::SaveState(std::ofstream &outState)
     outState.write((char *)_videoRam, _videoRamSize);
     outState.write((char *)_oamRam, GameBoy::OamRamSize);
     outState.write((char *)&_state, sizeof(GameBoyState));
-    
+
     _cart->SaveState(outState);
     _cpu->SaveState(outState);
     _ppu->SaveState(outState);

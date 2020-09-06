@@ -2,6 +2,7 @@
 
 class GameBoyApu;
 
+#include <fstream>
 #include "shared.h"
 
 struct SquareChannelState

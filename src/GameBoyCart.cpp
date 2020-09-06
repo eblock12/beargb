@@ -100,12 +100,9 @@ GameBoyCart *GameBoyCart::CreateFromRomFile(const char *filePath, GameBoy *gameB
                 newCart =  new GameBoyCart(gameBoy, romData);
         }
 
-        // determine save ram file name
-        std::filesystem::path romFilePath(filePath);
-        std::string basePath = romFilePath.has_stem() ? romFilePath.stem().string() : "";
-        std::string srmFilePath = basePath + ".srm";
-
-        newCart->SetSaveRamFile(srmFilePath.c_str());
+        std::filesystem::path savFilePath(filePath);
+        savFilePath.replace_extension(".sav");
+        newCart->SetSaveRamFile(savFilePath.c_str());
         newCart->LoadSaveRam();
 
         return newCart;
