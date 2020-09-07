@@ -233,6 +233,20 @@ void GameBoyApu::WriteRegister(u16 addr, u8 val)
 {
     Execute();
 
+    if (!_state.masterEnable)
+    {
+        switch (addr)
+        {
+            case 0xFF10: case 0xFF12: case 0xFF13: case 0xFF14:
+            case 0xFF17: case 0xFF18: case 0xFF19:
+            case 0xFF1A: case 0xFF1C: case 0xFF1D: case 0xFF1E:
+            case 0xFF24:
+            case 0xFF25:
+                // writing is disabled here when master channel is off
+                return;
+        }
+    }
+
 #ifdef TRACE
     std::cout << "write_apu: " << std::hex << int(addr) << "=" << int(val) << std::endl;
 #endif

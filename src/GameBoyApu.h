@@ -31,12 +31,8 @@ struct ApuState
     // Bit 7: Noise Enable (Left Output)
     u8 outputEnable;
 
-    // Bit 0: Square 0 on/off
-    // Bit 1: Square 1 on/off
-    // Bit 2: Wave on/off
-    // Bit 3: Noise on/off
-    // Bit 7: Master on/off
-    u8 channelEnable;
+    // high bit of $FF26, other enable bits are stored in channel instances
+    bool masterEnable;
 
     u8 timerTick;
 };
@@ -76,6 +72,8 @@ public:
     ~GameBoyApu();
 
     void AddCycles(s32 cycles) { _pendingCycles += cycles; }
+
+    bool IsEnabled() { return _state.masterEnable; }
 
     void Execute();
     void TimerTick();

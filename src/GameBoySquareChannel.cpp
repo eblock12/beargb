@@ -164,7 +164,10 @@ void GameBoySquareChannel::WriteRegister(u16 addr, u8 val)
 
         case 1: // Duty Pattern & Length (FF10/FF16)
             _state.length = 64 - (val & 0x3F); // length = (64 -t1) x (1/256sec)
-            _state.dutyCycleSelect = (val >> 6) & 0x03;
+            if (_apu->IsEnabled())
+            {
+                _state.dutyCycleSelect = (val >> 6) & 0x03;
+            }
             break;
 
         case 2: // Volume Envelope (FF12/FF17)
