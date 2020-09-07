@@ -54,7 +54,7 @@ s16 maxSample = 0;
 
 void GameBoyApu::Execute()
 {
-    if ((_state.channelEnable & 0x80) == 0x00)
+    if (!_state.masterEnable)
     {
         // apu is disabled, just eat cycles
         _cycleCount += _pendingCycles;
@@ -134,7 +134,7 @@ void GameBoyApu::TimerTick()
 
     Execute();
 
-    if (_state.channelEnable & 0x80) // APU is enabled
+    if (_state.masterEnable) // APU is enabled
     {
         if ((_state.timerTick & 0x01) == 0x00)
         {
@@ -205,7 +205,7 @@ u8 GameBoyApu::ReadRegister(u16 addr)
             return _state.outputEnable;
 
         case 0xFF26: // Channel enable
-            if (_state.channelEnable & 0x80)
+            if (_state.masterEnable)
             {
                 return 0x70 | // open bus
                     0x80 | // apu enabled
@@ -218,7 +218,6 @@ u8 GameBoyApu::ReadRegister(u16 addr)
             {
                 return 0x70; // bits 4-6 are open bus
             }
-
         // Wave Sample Data (32 4-bit samples)
         case 0xFF30: case 0xFF31: case 0xFF32: case 0xFF33:
         case 0xFF34: case 0xFF35: case 0xFF36: case 0xFF37:
@@ -278,10 +277,30 @@ void GameBoyApu::WriteRegister(u16 addr, u8 val)
             break;
 
         case 0xFF26: // Channel enable
-            _state.channelEnable = val;
-            // TODO: Update channel enable bits
-            break;
+        {
+            bool masterEnableNewVal = (val & 0x80) != 0;
+            if (masterEnableNewVal != _state.masterEnable)
+            {
+                if (_state.masterEnable)
+                {
+                    // turning on
+                    _state.timerTick = 0;
+                }
+                else
+                {
+                    // turning off
+                    _square0->SetEnabled(false);
+                    _square1->SetEnabled(false);
+                    _wave->SetEnabled(false);
+                    _noise->SetEnabled(false);
+                    _state.masterVolume = 0;
+                    _state.outputEnable = 0;
+                }
 
+                _state.masterEnable = masterEnableNewVal;
+            }
+            break;
+        }
         // Wave Sample Data (32 4-bit samples)
         case 0xFF30: case 0xFF31: case 0xFF32: case 0xFF33:
         case 0xFF34: case 0xFF35: case 0xFF36: case 0xFF37:
