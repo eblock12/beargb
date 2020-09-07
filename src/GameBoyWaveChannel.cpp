@@ -9,13 +9,31 @@ GameBoyWaveChannel::GameBoyWaveChannel(GameBoyApu *apu)
 GameBoyWaveChannel::~GameBoyWaveChannel()
 {
 }
-#include <iostream>
+
+void GameBoyWaveChannel::SetEnabled(bool val)
+{
+    if (!val)
+    {
+        // reset all registers except length and wave RAM
+        _state.output = 0;
+        _state.timer = 0;
+        _state.volume = 0;
+        _state.length = 0;
+        _state.lengthEnable = false;
+        _state.dacPowered = false;
+        _state.frequency = 0;
+        _state.position = 0;
+        _state.waveBuffer = 0;
+    }
+
+    _state.enabled = val;
+}
+
 void GameBoyWaveChannel::Execute(u32 cycles)
 {
     if (_state.enabled && _state.volume)
     {
         _state.output = _state.waveBuffer >> (_state.volume - 1);
-       // std::cout << "wave output=" << std::dec << int(_state.output) << std::endl;
     }
     else
     {
@@ -61,13 +79,13 @@ u8 GameBoyWaveChannel::ReadRegister(u16 addr)
     switch (addr)
     {
         case 0: // Sound on/off (FF1A)
-            return _state.dacPowered ? 0x80 : 0;
+            return (_state.dacPowered ? 0x80 : 0) | 0x7F;
 
         case 2: // Output level (FF1C)
-            return _state.volume << 5;
+            return (_state.volume << 5) | 0x9F;
 
         case 4: // Length trigger enable
-            return _state.lengthEnable ? 0x40 : 0;
+            return (_state.lengthEnable ? 0x40 : 0) | 0xBF;
     }
 
     return 0xFF; // open bus

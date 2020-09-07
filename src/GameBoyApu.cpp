@@ -5,6 +5,8 @@
 #include <iostream>
 #include <memory.h>
 
+//#define TRACE
+
 GameBoyApu::GameBoyApu(GameBoy *gameBoy, IHostSystem *host)
 {
     _gameBoy = gameBoy;
@@ -172,39 +174,39 @@ u8 GameBoyApu::ReadRegister(u16 addr)
 
     switch (addr)
     {
-        case 0xFF10: // Square 0 Sweep Envelope
-        case 0xFF11: // Square 0 Duty Pattern & Length
-        case 0xFF12: // Square 0 Volume Envelope
-        case 0xFF13: // Square 0 Frequency (Low Byte)
-        case 0xFF14: // Square 0 Frequency (High 3 bits + Initial/Counter)
+        case 0xFF10: // Square 0 Sweep Envelope (NR10)
+        case 0xFF11: // Square 0 Duty Pattern & Length (NR11)
+        case 0xFF12: // Square 0 Volume Envelope (NR12)
+        case 0xFF13: // Square 0 Frequency (Low Byte) (NR13)
+        case 0xFF14: // Square 0 Frequency (High 3 bits + Initial/Counter) (NR14)
             return _square0->ReadRegister(addr - 0xFF10);
 
-        case 0xFF16: // Square 1 Duty Pattern & Length
-        case 0xFF17: // Square 1 Volume Envelope
-        case 0xFF18: // Square 1 Frequency (Low Byte)
-        case 0xFF19: // Square 1 Frequency (High 3 bits + Initial/Counter)
+        case 0xFF16: // Square 1 Duty Pattern & Length (NR21)
+        case 0xFF17: // Square 1 Volume Envelope (NR22)
+        case 0xFF18: // Square 1 Frequency (Low Byte) (NR23)
+        case 0xFF19: // Square 1 Frequency (High 3 bits + Initial/Counter) (NR24)
             return _square1->ReadRegister(addr - 0xFF15);
 
-        case 0xFF1A: // Wave enable
-        case 0xFF1B: // Wave sound length
-        case 0xFF1C: // Wave output level
-        case 0xFF1D: // Frequency (Low Byte)
-        case 0xFF1E: // Frequency (High 3 bits + Initial/Counter)
+        case 0xFF1A: // Wave enable (NR30)
+        case 0xFF1B: // Wave sound length (NR31)
+        case 0xFF1C: // Wave output level (NR32)
+        case 0xFF1D: // Frequency (Low Byte) (NR33)
+        case 0xFF1E: // Frequency (High 3 bits + Initial/Counter) (NR34)
             return _wave->ReadRegister(addr - 0xFF1A);
 
-        case 0xFF20: // Noise length
-        case 0xFF21: // Noise volume envelope
-        case 0xFF22: // Noise polynomial counter
-        case 0xFF23: // Noise Initial/Counter
+        case 0xFF20: // Noise length (NR41)
+        case 0xFF21: // Noise volume envelope (NR42)
+        case 0xFF22: // Noise polynomial counter (NR43)
+        case 0xFF23: // Noise Initial/Counter (NR44)
             return _noise->ReadRegister(addr - 0xFF20);
 
-        case 0xFF24: // Master volume + external audio enable
+        case 0xFF24: // Master volume + external audio enable (NR50)
             return _state.masterVolume;
 
-        case 0xFF25: // Output enable
+        case 0xFF25: // Output enable (NR51)
             return _state.outputEnable;
 
-        case 0xFF26: // Channel enable
+        case 0xFF26: // Channel enable (NR52)
             if (_state.masterEnable)
             {
                 return 0x70 | // open bus
@@ -240,6 +242,7 @@ void GameBoyApu::WriteRegister(u16 addr, u8 val)
             case 0xFF10: case 0xFF12: case 0xFF13: case 0xFF14:
             case 0xFF17: case 0xFF18: case 0xFF19:
             case 0xFF1A: case 0xFF1C: case 0xFF1D: case 0xFF1E:
+            case 0xFF20: case 0xFF21: case 0xFF22: case 0xFF23:
             case 0xFF24:
             case 0xFF25:
                 // writing is disabled here when master channel is off
@@ -253,49 +256,50 @@ void GameBoyApu::WriteRegister(u16 addr, u8 val)
 
     switch (addr)
     {
-        case 0xFF10: // Square 0 Sweep Envelope
-        case 0xFF11: // Square 0 Duty Pattern & Length
-        case 0xFF12: // Square 0 Volume Envelope
-        case 0xFF13: // Square 0 Frequency (Low Byte)
-        case 0xFF14: // Square 0 Frequency (High 3 bits + Initial/Counter)
+        case 0xFF10: // Square 0 Sweep Envelope (NR10)
+        case 0xFF11: // Square 0 Duty Pattern & Length (NR11)
+        case 0xFF12: // Square 0 Volume Envelope (NR12)
+        case 0xFF13: // Square 0 Frequency (Low Byte) (NR13)
+        case 0xFF14: // Square 0 Frequency (High 3 bits + Initial/Counter) (NR14)
             _square0->WriteRegister(addr - 0xFF10, val);
             break;
 
-        case 0xFF16: // Square 1 Duty Pattern & Length
-        case 0xFF17: // Square 1 Volume Envelope
-        case 0xFF18: // Square 1 Frequency (Low Byte)
-        case 0xFF19: // Square 1 Frequency (High 3 bits + Initial/Counter)
+        case 0xFF16: // Square 1 Duty Pattern & Length (NR21)
+        case 0xFF17: // Square 1 Volume Envelope (NR22)
+        case 0xFF18: // Square 1 Frequency (Low Byte) (NR23)
+        case 0xFF19: // Square 1 Frequency (High 3 bits + Initial/Counter) (NR24)
             _square1->WriteRegister(addr - 0xFF15, val);
             break;
 
-        case 0xFF1A: // Wave enable
-        case 0xFF1B: // Wave sound length
-        case 0xFF1C: // Wave output level
-        case 0xFF1D: // Frequency (Low Byte)
-        case 0xFF1E: // Frequency (High 3 bits + Initial/Counter)
+        case 0xFF1A: // Wave enable (NR30)
+        case 0xFF1B: // Wave sound length (NR31)
+        case 0xFF1C: // Wave output level (NR32)
+        case 0xFF1D: // Frequency (Low Byte) (NR33)
+        case 0xFF1E: // Frequency (High 3 bits + Initial/Counter) (NR34)
             _wave->WriteRegister(addr - 0xFF1A, val);
+            break;
 
-        case 0xFF20: // Noise length
-        case 0xFF21: // Noise volume envelope
-        case 0xFF22: // Noise polynomial counter
-        case 0xFF23: // Noise Initial/Counter
+        case 0xFF20: // Noise length (NR41)
+        case 0xFF21: // Noise volume envelope (NR42)
+        case 0xFF22: // Noise polynomial counter (NR43)
+        case 0xFF23: // Noise Initial/Counter (NR44)
             _noise->WriteRegister(addr - 0xFF20, val);
             break;
 
-        case 0xFF24: // Master volume + external audio enable
+        case 0xFF24: // Master volume + external audio enable (NR50)
             _state.masterVolume = val;
             break;
 
-        case 0xFF25: // Output enable
+        case 0xFF25: // Output enable (NR51)
             _state.outputEnable = val;
             break;
 
-        case 0xFF26: // Channel enable
+        case 0xFF26: // Channel enable (NR52)
         {
             bool masterEnableNewVal = (val & 0x80) != 0;
             if (masterEnableNewVal != _state.masterEnable)
             {
-                if (_state.masterEnable)
+                if (masterEnableNewVal)
                 {
                     // turning on
                     _state.timerTick = 0;

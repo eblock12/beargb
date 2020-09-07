@@ -91,7 +91,7 @@ public:
     inline u16 GetTimer() { return _state.timer; }
 
     bool IsEnabled() { return _state.enabled; }
-    void SetEnabled(bool val) { _state.enabled = val; }
+    void SetEnabled(bool val);
 
     void Execute(u32 cycles);
     void TickCounter();

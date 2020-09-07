@@ -14,6 +14,19 @@ GameBoySquareChannel::~GameBoySquareChannel()
 {
 }
 
+void GameBoySquareChannel::SetEnabled(bool val)
+{
+    if (!val)
+    {
+        // reset all regs except length
+        u8 length = _state.length;
+        _state = { 0 };
+        _state.length = length;
+    }
+
+    _state.enabled = val;
+}
+
 void GameBoySquareChannel::Execute(u32 cycles)
 {
     _state.timer -= cycles;
@@ -134,19 +147,24 @@ u8 GameBoySquareChannel::ReadRegister(u16 addr)
     {
         case 0: // Sweep Envelope (FF10) - Square0 only
             return
+                0x80 | // open bit
                 (_state.sweepShift & 0x07) |
                 (_state.sweepDecrease ? 0x08 : 0x00) |
                 ((_state.sweepLength & 0x07) << 4);
 
         case 1: // Duty Pattern & Length (FF11/FF16)
-            return (_state.dutyCycleSelect & 0x03) << 7;
+            return 0x3F | // open bits
+                ((_state.dutyCycleSelect & 0x03) << 6);
 
         case 2: // Volume Envelope (FF12/FF17)
-            return (_state.envelopeLength & 0x07) |
+            return 
+                (_state.envelopeLength & 0x07) |
                 (_state.envelopeIncrease ? 0x08 : 0) |
                 ((_state.envelopeVolume & 0x0F) << 4);
-        case 3:
-            return 0xFF;
+
+        case 4: // FF14/FF19 - counter enabled
+            return 0xBF | // open bits
+                (_state.lengthEnable ? 0x40 : 0);
     }
 
     return 0xFF;

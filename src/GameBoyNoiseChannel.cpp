@@ -11,6 +11,19 @@ GameBoyNoiseChannel::~GameBoyNoiseChannel()
 {
 }
 
+void GameBoyNoiseChannel::SetEnabled(bool val)
+{
+    if (!val)
+    {
+        // zero all regs except length
+        u8 length = _state.length;
+        _state = { 0 };
+        _state.length = length;
+    }
+
+    _state.enabled = val;
+}
+
 void GameBoyNoiseChannel::Execute(u32 cycles)
 {
     // https://gbdev.gg8.se/wiki/articles/Gameboy_sound_hardware
@@ -117,7 +130,8 @@ u8 GameBoyNoiseChannel::ReadRegister(u16 addr)
                 (_state.shiftFrequency << 4);
 
         case 3: // Noise initialize/counter (FF23)
-            return (_state.lengthEnable ? 0x40 : 0);
+            return 0xBF | // open bits
+                (_state.lengthEnable ? 0x40 : 0);
     }
 
     return 0xFF; // open bus

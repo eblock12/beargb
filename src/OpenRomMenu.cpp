@@ -160,12 +160,12 @@ void OpenRomMenu::RefreshFileList()
         _bottomItem = _romList.end() - 1;
     }
 
-    std::cout << std::string(10, '-') << std::endl;
+    /*std::cout << std::string(10, '-') << std::endl;
     for (auto romEntry : _romList)
     {
         std::cout << romEntry.text << std::endl;
     }
-    std::cout << std::string(10, '-') << std::endl;
+    std::cout << std::string(10, '-') << std::endl;*/
 }
 
 void OpenRomMenu::ProcessInput()
