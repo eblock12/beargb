@@ -205,8 +205,19 @@ u8 GameBoyApu::ReadRegister(u16 addr)
             return _state.outputEnable;
 
         case 0xFF26: // Channel enable
-            return _state.channelEnable |
-                0x70; // bits 4-6 are open bus
+            if (_state.channelEnable & 0x80)
+            {
+                return 0x70 | // open bus
+                    0x80 | // apu enabled
+                    (_square0->IsEnabled() ? 0x01 : 0) |
+                    (_square1->IsEnabled() ? 0x02 : 0) |
+                    (_wave->IsEnabled() ? 0x04 : 0) |
+                    (_noise->IsEnabled() ? 0x08 : 0);
+            }
+            else
+            {
+                return 0x70; // bits 4-6 are open bus
+            }
 
         // Wave Sample Data (32 4-bit samples)
         case 0xFF30: case 0xFF31: case 0xFF32: case 0xFF33:
@@ -268,6 +279,7 @@ void GameBoyApu::WriteRegister(u16 addr, u8 val)
 
         case 0xFF26: // Channel enable
             _state.channelEnable = val;
+            // TODO: Update channel enable bits
             break;
 
         // Wave Sample Data (32 4-bit samples)

@@ -50,6 +50,8 @@ public:
     inline s8 GetOutput() { return _state.output; }
     inline u8 GetTimer() { return _state.timer; }
 
+    bool IsEnabled() { return _state.enabled; }
+
     void Execute(u32 cycles);
     void TickCounter();
     void TickVolumeEnvelope();
