@@ -18,6 +18,21 @@ GameBoyPpu::GameBoyPpu(GameBoy *gameBoy, IHostSystem *host, u8 *videoRam, u8 *oa
 
     _state.scanline = 0;
     _pixelsRendered = 0;
+
+    // build CGB color lookup
+    // Found at https://byuu.net/video/color-emulation/
+    // Original author is unknown
+    for (u32 r = 0; r < 32; r++)
+    for (u32 g = 0; g < 32; g++)
+    for (u32 b = 0; b < 32; b++)
+    {
+        u8 r2 = std::min<u32>((r * 26 + g *  4 + b *  2), 960) >> 2;
+        u8 g2 = std::min<u32>((         g * 24 + b *  8), 960) >> 2;
+        u8 b2 = std::min<u32>((r *  6 + g *  4 + b * 22), 960) >> 2;
+
+        _cgbPal[r][g][b] = (r2 << 24) | (g2 << 16) | (b2 << 8);
+    }
+    
 }
 
 GameBoyPpu::~GameBoyPpu()
@@ -294,16 +309,13 @@ void GameBoyPpu::TickDrawing()
                 if (_gameBoy->IsCgb())
                 {
                     CgbPalEntry color = _state.cgbObjPal[spriteColorIndex | ((spriteAttributes & 0x07) << 2)];
-                    _pixelBuffer[bufferOffset] =
-                        (color.r << 27) |
-                        (color.g << 19) |
-                        (color.b << 11);
+                    _pixelBuffer[bufferOffset] = _cgbPal[color.r][color.g][color.b];
                 }
                 else
                 {
                     u8 palette = (spriteAttributes & 0x10) != 0 ? _state.objPal1 : _state.objPal0;
                     u8 color = (palette >> (spriteColorIndex * 2)) & 0x03;
-                    _pixelBuffer[bufferOffset] = _gbPal[color];
+                    _pixelBuffer[bufferOffset] = _dmgPal[color];
                 }
             }
             else
@@ -311,15 +323,12 @@ void GameBoyPpu::TickDrawing()
                 if (_gameBoy->IsCgb())
                 {
                     CgbPalEntry color = _state.cgbBgPal[bgColorIndex | ((bgAttributes & 0x07) << 2)];
-                    _pixelBuffer[bufferOffset] =
-                        (color.r << 27) |
-                        (color.g << 19) |
-                        (color.b << 11);
+                    _pixelBuffer[bufferOffset] = _cgbPal[color.r][color.g][color.b];
                 }
                 else
                 {
                     u8 color = (_state.bgPal >> (bgColorIndex * 2)) & 0x03;
-                    _pixelBuffer[bufferOffset] = _gbPal[color];
+                    _pixelBuffer[bufferOffset] = _dmgPal[color];
                 }
             }
         }

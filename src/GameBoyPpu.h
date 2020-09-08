@@ -190,13 +190,14 @@ private:
     s16 _pixelsRendered;
     u8 _bgColumn;
     u32 *_pixelBuffer;
-    u32 _gbPal[4] =
+    u32 _dmgPal[4] =
     {
         0xFFFFFF00,
-        0x80808000,
-        0x40404000,
+        0xAAAAAA00,
+        0x55555500,
         0x00000000,
     };
+    u32 _cgbPal[32][32][32]; 
 
     inline void StartRender();
     void SetLcdPower(bool enable);
