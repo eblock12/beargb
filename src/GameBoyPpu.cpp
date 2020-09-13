@@ -47,7 +47,7 @@ void GameBoyPpu::ExecuteCycle()
         if ((_gameBoy->GetCycleCount() % (154 * 456)) == 0)
         {
             _host->PresentPixelBuffer();
-            //_host->SyncAudio();
+            _host->SyncAudio();
         }
         return;
     }
@@ -114,7 +114,7 @@ void GameBoyPpu::ExecuteCycle()
                     _windowOffset = 0;
                     _gameBoy->SetInterruptFlags(IrqFlag::VBlank);
                     _host->PresentPixelBuffer();
-                    //_host->SyncAudio();
+                    _host->SyncAudio();
                     _gameBoy->CheckJoyPadChange();
                 }
                 break;

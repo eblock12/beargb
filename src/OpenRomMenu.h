@@ -35,8 +35,6 @@ private:
     u16 _lastInputState;
     unsigned _inputHeldFrames;
 
-    u32 *_pixelBuffer;
-
     void DrawFileList();
     void DrawString(const std::string &str, int x, int y);
     void InvertRect(int x, int y, int width, int height);
@@ -48,6 +46,5 @@ public:
     OpenRomMenu(IHostSystem *host);
     ~OpenRomMenu();
 
-    u32 *GetPixelBuffer() { return _pixelBuffer; }
     void RunFrame();
 };

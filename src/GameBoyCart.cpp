@@ -110,7 +110,7 @@ GameBoyCart *GameBoyCart::CreateFromRomFile(const char *filePath, GameBoy *gameB
 
         std::filesystem::path savFilePath(filePath);
         savFilePath.replace_extension(".sav");
-        newCart->SetSaveRamFile(savFilePath.c_str());
+        newCart->SetSaveRamFile(savFilePath.string());
         newCart->LoadSaveRam();
 
         return newCart;

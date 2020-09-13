@@ -38,6 +38,4 @@ public:
 
     virtual u16 *GetPixelBuffer() = 0;
     virtual void PresentPixelBuffer() = 0;
-
-    virtual void PushVideoFrame(u32 *pixelBuffer) = 0;
 };

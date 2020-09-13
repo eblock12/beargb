@@ -78,7 +78,6 @@ public:
     virtual void QueueAudio(s16 *buffer, u32 sampleCount) override;
     virtual void SyncAudio() override;
 
-    virtual void PushVideoFrame(u32 *pixelBuffer) override;
     virtual u16 *GetPixelBuffer() override { return _activePixelBuffer; }
     virtual void PresentPixelBuffer() override;
 };

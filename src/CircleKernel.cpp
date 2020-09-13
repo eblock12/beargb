@@ -229,29 +229,6 @@ void CircleKernel::SyncAudio()
     }
 }
 
-void CircleKernel::PushVideoFrame(u32 *pixelBuffer)
-{
-    u32 pitch = _frameBuffer->GetPitch() / sizeof(TScreenColor);
-    u32 width = _frameBuffer->GetWidth();
-    u32 height = _frameBuffer->GetHeight();
-
-    int cx = width > 160 ? width / 2 - 160 / 2 : 0;
-    int cy = height > 144 ? height / 2 - 144 / 2 : 0;
-
-    for (int x = 0; x < 160; x++)
-    for (int y = 0; y < 144; y++)
-    {
-        u32 gbColor = pixelBuffer[y * 160 + x];
-        u8 r = gbColor >> 24;
-        u8 g = gbColor >> 16;
-        u8 b = gbColor >> 8;
-
-        _activePixelBuffer[(x + cx) + ((y + cy) * pitch)] = COLOR16(r >> 3, g >> 3, b >> 3);
-    }
-
-    PresentPixelBuffer();
-}
-
 void CircleKernel::PresentPixelBuffer()
 {
     // wait for v-sync

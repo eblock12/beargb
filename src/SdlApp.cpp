@@ -15,6 +15,7 @@ SdlApp::SdlApp()
     _frameTexture = nullptr;
     _audioDevice = 0;
     _menuEnable = false;
+    _pixelBuffer = new u16[160 * 144];
 }
 
 SdlApp::~SdlApp()
@@ -35,6 +36,8 @@ SdlApp::~SdlApp()
     {
         SDL_DestroyWindow(_window);
     }
+
+    delete[] _pixelBuffer;
 
     SDL_Quit();
 }
@@ -67,7 +70,7 @@ bool SdlApp::Initialize()
     SDL_RenderClear(_renderer);
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
 
-    _frameTexture = SDL_CreateTexture(_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 160, 144);
+    _frameTexture = SDL_CreateTexture(_renderer, SDL_PIXELFORMAT_BGR555, SDL_TEXTUREACCESS_STREAMING, 160, 144);
 
     SDL_AudioSpec requestedAudioSpec;
     memset(&requestedAudioSpec, 0, sizeof(requestedAudioSpec));
@@ -191,9 +194,9 @@ void SdlApp::SyncAudio()
     }
 }
 
-void SdlApp::PushVideoFrame(u32 *pixelBuffer)
+void SdlApp::PresentPixelBuffer()
 {
-    SDL_UpdateTexture(_frameTexture, nullptr, pixelBuffer, 160 * sizeof(u32));
+    SDL_UpdateTexture(_frameTexture, nullptr, _pixelBuffer, 160 * sizeof(u16));
     SDL_RenderCopy(_renderer, _frameTexture, nullptr, nullptr);
     SDL_RenderPresent(_renderer);
 }

@@ -9,7 +9,7 @@
 
 constexpr int ScreenWidth = 160;
 constexpr int ScreenHeight = 144;
-constexpr int ScreenStride = ScreenWidth * sizeof(u32);
+constexpr int ScreenStride = ScreenWidth * sizeof(u16);
 constexpr int ItemsPerScreen = ScreenHeight / 8 - 1;
 
 constexpr int KeyRepeatStartFrames = 30; // 500 ms until repeat starts
@@ -18,8 +18,6 @@ constexpr int KeyRepeatInterval = 1; // every 1 frames (16 ms)
 OpenRomMenu::OpenRomMenu(IHostSystem *host)
 {
     _host = host;
-    _pixelBuffer = new u32[ScreenWidth * ScreenHeight];
-    memset(_pixelBuffer, 0, ScreenWidth * ScreenHeight * sizeof(u32));
     _currentPath = std::filesystem::path("roms"s);
 
     RefreshFileList();
@@ -27,7 +25,6 @@ OpenRomMenu::OpenRomMenu(IHostSystem *host)
 
 OpenRomMenu::~OpenRomMenu()
 {
-    delete[] _pixelBuffer;
 }
 
 void OpenRomMenu::DrawFileList()
@@ -49,6 +46,8 @@ void OpenRomMenu::DrawFileList()
 
 void OpenRomMenu::DrawString(const std::string &str, int x, int y)
 {
+    u16 *pixelBuffer = _host->GetPixelBuffer();
+
     for (const char &strChar : str)
     {
         char c = strChar;
@@ -63,14 +62,14 @@ void OpenRomMenu::DrawString(const std::string &str, int x, int y)
         {
             for (int bmX = 0; bmX < 8; bmX++)
             {
-                u8 pixel = bitmap[bmY] & (1 << bmX);
+                u8 pixel = (bitmap[bmY] & (1 << bmX)) != 0 ? 0x1F : 0;
 
                 int px = x + bmX;
                 int py = y + bmY;
 
                 if ((px >= 0) && (py >= 0) && (px < ScreenWidth) && (py < ScreenHeight))
                 {
-                    _pixelBuffer[(y + bmY) * ScreenWidth + x + bmX] = (u32)pixel * 0xFFFFFF00;
+                    pixelBuffer[(y + bmY) * ScreenWidth + x + bmX] = COLOR16(pixel, pixel, pixel);
                 }
             }
         }
@@ -81,12 +80,14 @@ void OpenRomMenu::DrawString(const std::string &str, int x, int y)
 
 void OpenRomMenu::InvertRect(int x, int y, int width, int height)
 {
+    u16 *pixelBuffer = _host->GetPixelBuffer();
+
     for (int py = y; py < (y + height); py++)
     for (int px = x; px < (x + width); px++)
     {
         if ((px >= 0) && (py >= 0) && (px < ScreenWidth) && (py < ScreenHeight))
         {
-            _pixelBuffer[py * ScreenWidth + px] ^= 0xFFFFFF00;
+            pixelBuffer[py * ScreenWidth + px] ^= 0xFFFF;
         }
     }
 }
@@ -226,11 +227,12 @@ void OpenRomMenu::RunFrame()
 
     ScrollIntoView(_selectedItem);
 
-    memset(_pixelBuffer, 0, ScreenHeight * ScreenStride);
+    u16 *pixelBuffer = _host->GetPixelBuffer();
+    memset(pixelBuffer, 0, ScreenHeight * ScreenStride);
 
     DrawFileList();
 
-    _host->PushVideoFrame(_pixelBuffer);
+    _host->PresentPixelBuffer();
 }
 
 void OpenRomMenu::ScrollIntoView(std::vector<RomMenuItem>::iterator item)

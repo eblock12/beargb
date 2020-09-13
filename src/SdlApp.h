@@ -14,6 +14,7 @@ private:
     SDL_Window *_window;
     SDL_Renderer *_renderer;
     SDL_Texture *_frameTexture;
+    u16 *_pixelBuffer;
     const u8 *_keyboardState;
 
     SDL_AudioSpec _audioSpec;
@@ -30,5 +31,6 @@ public:
     HostExitCode RunApp(int argc, const char *argv[]) override;
     void QueueAudio(s16 *buffer, u32 sampleCount) override;
     void SyncAudio() override;
-    void PushVideoFrame(u32 *pixelBuffer) override;
+    u16 *GetPixelBuffer() override { return _pixelBuffer; }
+    void PresentPixelBuffer() override;
 };
