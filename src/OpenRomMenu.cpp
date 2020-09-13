@@ -7,13 +7,13 @@
 #include <set>
 #include <string.h>
 
-constexpr unsigned ScreenWidth = 160;
-constexpr unsigned ScreenHeight = 144;
-constexpr unsigned ScreenStride = ScreenWidth * sizeof(u32);
-constexpr unsigned ItemsPerScreen = ScreenHeight / 8 - 1;
+constexpr int ScreenWidth = 160;
+constexpr int ScreenHeight = 144;
+constexpr int ScreenStride = ScreenWidth * sizeof(u32);
+constexpr int ItemsPerScreen = ScreenHeight / 8 - 1;
 
-constexpr unsigned KeyRepeatStartFrames = 30; // 500 ms until repeat starts
-constexpr unsigned KeyRepeatInterval = 1; // every 1 frames (16 ms)
+constexpr int KeyRepeatStartFrames = 30; // 500 ms until repeat starts
+constexpr int KeyRepeatInterval = 1; // every 1 frames (16 ms)
 
 OpenRomMenu::OpenRomMenu(IHostSystem *host)
 {
@@ -34,7 +34,6 @@ void OpenRomMenu::DrawFileList()
 {
     int y = 0;
 
-    auto fileIterator = _topItem;
     for (auto fileIterator = _topItem; fileIterator <= _bottomItem; fileIterator++)
     {
         RomMenuItem item = *fileIterator;
@@ -58,7 +57,7 @@ void OpenRomMenu::DrawString(const std::string &str, int x, int y)
             c = '?';
         }
 
-        const u8 *bitmap = font8x8_basic[c];
+        const u8 *bitmap = font8x8_basic[(u8)c];
 
         for (int bmY = 0; bmY < 8; bmY++)
         {
