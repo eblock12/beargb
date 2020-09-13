@@ -182,7 +182,6 @@ public:
     ~GameBoy();
 
     u64 GetCycleCount() { return _state.cycleCount; }
-    u32 *GetPixelBuffer() { return _ppu->GetPixelBuffer(); }
     GameBoyModel GetModel() { return _model; }
     inline bool IsCgb() { return _state.isCgb; }
     bool IsBiosEnabled() { return _state.biosEnabled; }

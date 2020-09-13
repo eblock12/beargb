@@ -13,9 +13,6 @@ GameBoyPpu::GameBoyPpu(GameBoy *gameBoy, IHostSystem *host, u8 *videoRam, u8 *oa
     _videoRam = videoRam;
     _oamRam = oamRam;
 
-    _pixelBuffer = new u32[160 * 144];
-    memset(_pixelBuffer, 0, 160 * 144 * sizeof(u32));
-
     _state.scanline = 0;
     _pixelsRendered = 0;
 
@@ -30,14 +27,13 @@ GameBoyPpu::GameBoyPpu(GameBoy *gameBoy, IHostSystem *host, u8 *videoRam, u8 *oa
         u8 g2 = std::min<u32>((         g * 24 + b *  8), 960) >> 2;
         u8 b2 = std::min<u32>((r *  6 + g *  4 + b * 22), 960) >> 2;
 
-        _cgbPal[r][g][b] = (r2 << 24) | (g2 << 16) | (b2 << 8);
+        _cgbPal[r][g][b] = COLOR16(r2 >> 3, g2 >> 3, b2 >> 3);
     }
-    
+
 }
 
 GameBoyPpu::~GameBoyPpu()
 {
-    delete[] _pixelBuffer;
 }
 
 void GameBoyPpu::ExecuteCycle()
@@ -50,8 +46,8 @@ void GameBoyPpu::ExecuteCycle()
     {
         if ((_gameBoy->GetCycleCount() % (154 * 456)) == 0)
         {
-            _host->SyncAudio();
-            _host->PushVideoFrame(_pixelBuffer);
+            _host->PresentPixelBuffer();
+            //_host->SyncAudio();
         }
         return;
     }
@@ -117,8 +113,8 @@ void GameBoyPpu::ExecuteCycle()
                     _state.lcdMode = LcdModeFlag::VBlank;
                     _windowOffset = 0;
                     _gameBoy->SetInterruptFlags(IrqFlag::VBlank);
-                    _host->SyncAudio();
-                    _host->PushVideoFrame(_pixelBuffer);
+                    _host->PresentPixelBuffer();
+                    //_host->SyncAudio();
                     _gameBoy->CheckJoyPadChange();
                 }
                 break;
@@ -299,6 +295,8 @@ void GameBoyPpu::TickDrawing()
             u8 spriteColorIndex = _fifoOam.data[_fifoOam.position].color;
             u8 spriteAttributes = _fifoOam.data[_fifoOam.position].attributes;
 
+            u16 *pixelBuffer = _host->GetPixelBuffer();
+
             // check if sprite or BG pixel has priority
             if ((spriteColorIndex != 0) && // sprite pixel is opaque,
                 ((bgColorIndex == 0) || // BG pixel is transparent
@@ -309,13 +307,13 @@ void GameBoyPpu::TickDrawing()
                 if (_gameBoy->IsCgb())
                 {
                     CgbPalEntry color = _state.cgbObjPal[spriteColorIndex | ((spriteAttributes & 0x07) << 2)];
-                    _pixelBuffer[bufferOffset] = _cgbPal[color.r][color.g][color.b];
+                    pixelBuffer[bufferOffset] = _cgbPal[color.r][color.g][color.b];
                 }
                 else
                 {
                     u8 palette = (spriteAttributes & 0x10) != 0 ? _state.objPal1 : _state.objPal0;
                     u8 color = (palette >> (spriteColorIndex * 2)) & 0x03;
-                    _pixelBuffer[bufferOffset] = _dmgPal[color];
+                    pixelBuffer[bufferOffset] = _dmgPal[color];
                 }
             }
             else
@@ -323,12 +321,12 @@ void GameBoyPpu::TickDrawing()
                 if (_gameBoy->IsCgb())
                 {
                     CgbPalEntry color = _state.cgbBgPal[bgColorIndex | ((bgAttributes & 0x07) << 2)];
-                    _pixelBuffer[bufferOffset] = _cgbPal[color.r][color.g][color.b];
+                    pixelBuffer[bufferOffset] = _cgbPal[color.r][color.g][color.b];
                 }
                 else
                 {
                     u8 color = (_state.bgPal >> (bgColorIndex * 2)) & 0x03;
-                    _pixelBuffer[bufferOffset] = _dmgPal[color];
+                    pixelBuffer[bufferOffset] = _dmgPal[color];
                 }
             }
         }
@@ -833,7 +831,6 @@ void GameBoyPpu::LoadState(std::ifstream &inState)
     inState.read((char *)&_renderPaused, sizeof(_renderPaused));
     inState.read((char *)&_pixelsRendered, sizeof(_pixelsRendered));
     inState.read((char *)&_bgColumn, sizeof(_bgColumn));
-    inState.read((char *)_pixelBuffer, 160 * 144 * sizeof(u32));
 }
 
 void GameBoyPpu::SaveState(std::ofstream &outState)
@@ -860,5 +857,4 @@ void GameBoyPpu::SaveState(std::ofstream &outState)
     outState.write((char *)&_renderPaused, sizeof(_renderPaused));
     outState.write((char *)&_pixelsRendered, sizeof(_pixelsRendered));
     outState.write((char *)&_bgColumn, sizeof(_bgColumn));
-    outState.write((char *)_pixelBuffer, 160 * 144 * sizeof(u32));
 }

@@ -23,6 +23,9 @@ enum HostButton : u16
     Menu   = 0x100,
 };
 
+// really ((green) & 0x3F) << 5, but to have a 0-31 range for all colors
+#define COLOR16(red, green, blue) (((red)&0x1F) << 11 | ((green)&0x1F) << 6 | ((blue)&0x1F))
+
 class IHostSystem
 {
 public:
@@ -32,6 +35,9 @@ public:
     virtual HostExitCode RunApp(int argc, const char *argv[]) = 0;
     virtual void QueueAudio(s16 *buffer, u32 sampleCount) = 0;
     virtual void SyncAudio() = 0;
+
+    virtual u16 *GetPixelBuffer() = 0;
+    virtual void PresentPixelBuffer() = 0;
 
     virtual void PushVideoFrame(u32 *pixelBuffer) = 0;
 };

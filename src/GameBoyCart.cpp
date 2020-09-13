@@ -5,6 +5,8 @@
 #include <iostream>
 #include <string>
 
+// #define TRACE
+
 GameBoyCart::GameBoyCart(GameBoy *gameBoy, u8 *romData)
 {
     _gameBoy = gameBoy;
@@ -28,7 +30,9 @@ GameBoyCart *GameBoyCart::CreateFromRomFile(const char *filePath, GameBoy *gameB
     std::ifstream romStream(filePath, std::ios::in | std::ios::binary);
     if (romStream.good())
     {
+#ifdef TRACE
         std::cout << "Opened ROM file: " << filePath << std::endl;
+#endif
 
         // get file size by seeking to EOF and check offset
         romStream.seekg(0, std::ios::end);
@@ -56,6 +60,7 @@ GameBoyCart *GameBoyCart::CreateFromRomFile(const char *filePath, GameBoy *gameB
                 break;
         }
 
+#ifdef TRACE
         std::cout << "Title: " << header.title << std::endl;
         std::cout << "Type: " << header.GetCartTypeName() << std::endl;
         std::cout << "ROM Size: " << std::to_string(header.GetRomSize() / 1024) << " KB" << std::endl;
@@ -63,6 +68,7 @@ GameBoyCart *GameBoyCart::CreateFromRomFile(const char *filePath, GameBoy *gameB
         std::cout << "Battery: " << (header.HasBattery() ? "Yes" : "No") << std::endl;
         std::cout << "CGB Support: " << cgbSupport << std::endl;
         std::cout << "SGB Support: " << (header.sgbFlag == 0x03 ? "Yes" : "No") << std::endl;
+#endif
 
         GameBoyCart *newCart;
 
@@ -96,7 +102,9 @@ GameBoyCart *GameBoyCart::CreateFromRomFile(const char *filePath, GameBoy *gameB
                 newCart = new GameBoyCartMbc5(gameBoy, romData);
                 break;
             default:
+#ifdef TRACE
                 std::cout << "WARNING! Cart mapper type is unsupported" << std::endl;
+#endif
                 newCart =  new GameBoyCart(gameBoy, romData);
         }
 
@@ -109,7 +117,9 @@ GameBoyCart *GameBoyCart::CreateFromRomFile(const char *filePath, GameBoy *gameB
     }
     else
     {
+#ifdef TRACE
         std::cout << "Failed to open rom file: " << filePath << std::endl;
+#endif
 
         // return a dummy cart
         u8 *romData = new u8[0x8000];
@@ -137,7 +147,9 @@ void GameBoyCart::LoadSaveRam()
     if (inSram.good())
     {
         inSram.read((char *)_cartRam, _header.GetRamSize());
+#ifdef TRACE
         std::cout << "Loaded save RAM from: " << _sramFile << std::endl;
+#endif
     }
 }
 
@@ -154,8 +166,10 @@ void GameBoyCart::WriteSaveRam()
         outSram.write((char *)_cartRam, _header.GetRamSize());
         outSram.flush();
         outSram.close();
+#ifdef TRACE
         std::cout << "Wrote save RAM to: " << _sramFile << std::endl;
         std::cout << _header.GetRamSize() << std::endl;
+#endif
     }
 }
 

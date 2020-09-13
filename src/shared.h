@@ -12,5 +12,5 @@ typedef  int_least8_t   s8;
 typedef  int_least16_t   s16;
 typedef  int_least32_t   s32;
 #else
-#include <circle_stdlib_app.h>
+#include <circle/types.h>
 #endif

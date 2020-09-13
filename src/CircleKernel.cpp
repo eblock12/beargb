@@ -1,5 +1,6 @@
 #include "CircleKernel.h"
 #include "OpenRomMenu.h"
+#include <memory.h>
 #include <circle/startup.h>
 #include <circle/cputhrottle.h>
 
@@ -7,11 +8,20 @@ constexpr unsigned SoundSampleRate = 44100;
 constexpr unsigned SoundChunkSize = 2000;
 constexpr unsigned int SoundQueueSize = 100; // milliseconds
 
+constexpr unsigned ScreenWidth = 160;
+constexpr unsigned ScreenHeight = 144;
+
 u16 CircleKernel::_buttonState = 0;
 
-CircleKernel::CircleKernel()
-    : CStdlibAppStdio("BearGB"),
-    _pwmSoundDevice(&mInterrupt, SoundSampleRate, SoundChunkSize),
+CircleKernel::CircleKernel() :
+    _kernelName("BearGB"),
+    _partitionName("SD:"),
+    _timer(&_interruptSystem),
+    _logger(_kernelOptions.GetLogLevel(), &_timer),
+    _usbHciDevice(&_interruptSystem, &_timer),
+    _emmcDevice(&_interruptSystem, &_timer, &_actLED),
+    _frameBuffer(nullptr),
+    _pwmSoundDevice(&_interruptSystem, SoundSampleRate, SoundChunkSize),
     _powerButtonPin(0x1A, GPIOModeInput),
     _powerEnablePin(0x1B, GPIOModeOutput)
 {
@@ -19,6 +29,7 @@ CircleKernel::CircleKernel()
 
 bool CircleKernel::Initialize()
 {
+    // request max clock speed for now
     CCPUThrottle::Get()->SetSpeed(CPUSpeedMaximum);
 
     // Note: Skipping pins 0x12 and 0x13 for audio usage
@@ -33,40 +44,48 @@ bool CircleKernel::Initialize()
         CGPIOPin(pin, GPIOModeAlternateFunction2);
     }
 
-    // put audio pins into AltMode5
+    // put audio pins into AltMode5 (GPI Case)
     CGPIOPin(0x12, GPIOModeAlternateFunction5);
     CGPIOPin(0x13, GPIOModeAlternateFunction5);
 
-    bool result = CStdlibAppStdio::Initialize();
+    // initialize interrupts
+    _interruptSystem.Initialize();
 
-    bool foundGamePad = false;
-    for (unsigned deviceIdx = 1; 1; deviceIdx++)
-    {
-        CString deviceName;
-        deviceName.Format ("upad%u", deviceIdx);
+    // initialize frame buffer
+    _frameBuffer = new CBcmFrameBuffer(ScreenWidth, ScreenHeight, 16, ScreenWidth, ScreenHeight * 2);
+    _frameBuffer->Initialize();
+    memset((u16 *)_frameBuffer->GetBuffer(), 0xFF, _frameBuffer->GetSize());
 
-        CUSBGamePadDevice *gamePad =
-            (CUSBGamePadDevice *)mDeviceNameService.GetDevice(deviceName, false /*bBlockDevice*/);
-        if (gamePad == nullptr)
-        {
-            break;
-        }
+    // setup page flipping within frame buffer
+    _activePixelBuffer = (u16 *)_frameBuffer->GetBuffer();
+    _frameBuffer->SetVirtualOffset(0, ScreenHeight);
+    _videoPage = 0;
 
-        const TGamePadState *pState = gamePad->GetInitialState();
-        assert (pState != 0);
+    // initialize serial
+    _serialDevice.Initialize(115200);
 
-        gamePad->RegisterStatusHandler(GamePadStatusHandler);
+    // use null device for logging
+    _logger.Initialize(&_nullDevice);
 
-        foundGamePad = true;
-    }
+    // initialize timer
+    _timer.Initialize();
 
-    if (!foundGamePad)
-    {
-        mLogger.Write(GetKernelName(), LogPanic, "Gamepad not found");
-        result = false;
-    }
+    // initialize EMMC
+    _emmcDevice.Initialize();
 
-    return result;
+    // mount SD card as FAT
+    f_mount(&_fileSystem, _partitionName, 1);
+
+    // initialze USB Host Controller Interface
+    _usbHciDevice.Initialize();
+
+    // initialize newlib stdio for file system access
+    CGlueStdioInit(_fileSystem);
+
+    CUSBGamePadDevice *gamePad = (CUSBGamePadDevice *)_deviceNameService.GetDevice("upad1", false /*bBlockDevice*/);
+    gamePad->RegisterStatusHandler(GamePadStatusHandler);
+
+    return true;
 }
 
 bool CircleKernel::IsButtonPressed(HostButton button)
@@ -113,7 +132,6 @@ HostExitCode CircleKernel::RunApp(int argc, const char *argv[])
         if (_menuEnable)
         {
             menu.RunFrame();
-            mScreen.GetFrameBuffer()->WaitForVerticalSync();
         }
         else
         {
@@ -143,7 +161,10 @@ HostExitCode CircleKernel::RunApp(int argc, const char *argv[])
 
     _gameBoy.reset();
 
-    _powerEnablePin.Write(LOW); // powering
+    // unmount SD card
+    f_mount(0, "", 0);
+
+    _powerEnablePin.Write(LOW); // powering down
 
     return HostExitCode::Success;
 }
@@ -210,12 +231,9 @@ void CircleKernel::SyncAudio()
 
 void CircleKernel::PushVideoFrame(u32 *pixelBuffer)
 {
-    CBcmFrameBuffer *frameBuffer = mScreen.GetFrameBuffer();
-
-    TScreenColor *frameBufferBuffer = (TScreenColor *)(uintptr)frameBuffer->GetBuffer();
-    u32 pitch = frameBuffer->GetPitch() / sizeof(TScreenColor);
-    u32 width = frameBuffer->GetWidth();
-    u32 height = frameBuffer->GetHeight();
+    u32 pitch = _frameBuffer->GetPitch() / sizeof(TScreenColor);
+    u32 width = _frameBuffer->GetWidth();
+    u32 height = _frameBuffer->GetHeight();
 
     int cx = width > 160 ? width / 2 - 160 / 2 : 0;
     int cy = height > 144 ? height / 2 - 144 / 2 : 0;
@@ -228,6 +246,23 @@ void CircleKernel::PushVideoFrame(u32 *pixelBuffer)
         u8 g = gbColor >> 16;
         u8 b = gbColor >> 8;
 
-        frameBufferBuffer[(x + cx) + ((y + cy) * pitch)] = COLOR16(r >> 3, g >> 3, b >> 3);
+        _activePixelBuffer[(x + cx) + ((y + cy) * pitch)] = COLOR16(r >> 3, g >> 3, b >> 3);
     }
+
+    PresentPixelBuffer();
+}
+
+void CircleKernel::PresentPixelBuffer()
+{
+    // wait for v-sync
+    _frameBuffer->WaitForVerticalSync();
+
+    // present current page to screen
+    _frameBuffer->SetVirtualOffset(0, ScreenHeight * _videoPage);
+
+    // move to next page
+    _videoPage = (_videoPage + 1) & 1;
+
+    // get address of new video page
+    _activePixelBuffer = ((u16 *)_frameBuffer->GetBuffer() + (ScreenHeight * ScreenWidth * _videoPage));
 }

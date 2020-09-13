@@ -189,15 +189,14 @@ private:
     bool _renderPaused;
     s16 _pixelsRendered;
     u8 _bgColumn;
-    u32 *_pixelBuffer;
-    u32 _dmgPal[4] =
+    u16 _dmgPal[4] =
     {
-        0xFFFFFF00,
-        0xAAAAAA00,
-        0x55555500,
-        0x00000000,
+        COLOR16(0x1F, 0x1F, 0x1F),
+        COLOR16(0x15, 0x15, 0x15),
+        COLOR16(0x0A, 0x0A, 0x0A),
+        COLOR16(0x00, 0x00, 0x00)
     };
-    u32 _cgbPal[32][32][32]; 
+    u16 _cgbPal[32][32][32];
 
     inline void StartRender();
     void SetLcdPower(bool enable);
@@ -221,8 +220,6 @@ public:
 
     u8 ReadOamRam(u8 addr);
     void WriteOamRam(u8 addr, u8 val, bool dmaBypass);
-
-    u32 *GetPixelBuffer() { return _pixelBuffer; }
 
     void LoadState(std::ifstream &inState);
     void SaveState(std::ofstream &outState);
